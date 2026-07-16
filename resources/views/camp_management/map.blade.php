@@ -152,10 +152,10 @@
                  ondragleave="this.classList.remove('drag')"
                  ondrop="handleDrop(event)">
                 <i class="fas fa-file-upload" id="upload-icon"></i>
-                <p id="upload-text">ارفع ملف Shapefile</p>
-                <small>اسحب وأفلت ملف .zip (يحتوي .shp, .dbf, .shx, .prj)</small>
+                <p id="upload-text">ارفع ملف/ملفات Shapefile</p>
+                <small>اسحب وأفلت ملفات .zip أو .shp متعددة (تحتوي على .shp, .dbf, .shx, .prj)</small>
             </div>
-            <input type="file" id="shp-input" accept=".zip,.shp" onchange="handleFileSelect(event)">
+            <input type="file" id="shp-input" accept=".zip,.shp" onchange="handleFileSelect(event)" multiple>
 
             {{-- Layer controls --}}
             <div class="layer-legend" id="layer-controls" style="display:none">
@@ -319,7 +319,7 @@ let routeLayers     = [];
 let tempMarker      = null;
 let geoLayers       = { best: L.layerGroup(), good: L.layerGroup() };
 let campMarkers     = [];
-let geojsonData     = null;
+let geojsonData     = [];
 
 // ===== DRAW CAMPS =====
 const campBounds = [];
@@ -370,12 +370,28 @@ map.on('click', e => {
 function handleDrop(e){
     e.preventDefault();
     document.getElementById('upload-zone').classList.remove('drag');
-    const file = e.dataTransfer.files[0];
-    if(file) processShapefile(file);
+    const files = Array.from(e.dataTransfer.files || []);
+    if(files.length) files.forEach(file => processShapefile(file));
 }
 function handleFileSelect(e){
-    const file = e.target.files[0];
-    if(file) processShapefile(file);
+    const files = Array.from(e.target.files || []);
+    if(files.length) files.forEach(file => processShapefile(file));
+    e.target.value = '';
+}
+
+function getAllFeatures(){
+    return geojsonData.flatMap(item => {
+        if (Array.isArray(item)) {
+            return item.flatMap(entry => entry?.features || []);
+        }
+        return item?.features || [];
+    });
+}
+
+function isPointInStudyArea(lat, lng){
+    const features = getAllFeatures();
+    if (!features.length) return true;
+    return features.some(feat => pointInPolygon([lng, lat], feat.geometry));
 }
 
 async function processShapefile(file){
@@ -386,11 +402,12 @@ async function processShapefile(file){
     try {
         const buffer  = await file.arrayBuffer();
         const geojson = await shp(buffer);
-        geojsonData   = geojson;
-        loadGeoJSON(geojson);
+        geojsonData.push(geojson);
+        loadGeoJSON(geojson, file.name);
         icon.className  = 'fas fa-check-circle';
         icon.style.color = '#10b981';
-        const count = geojson.features ? geojson.features.length : 0;
+        const features = getAllFeatures();
+        const count = features.length;
         text.textContent = `✓ تم تحميل ${count} منطقة`;
         document.getElementById('cnt-polygons').textContent = count;
         document.getElementById('layer-controls').style.display = 'block';
@@ -403,10 +420,10 @@ async function processShapefile(file){
     }
 }
 
-function loadGeoJSON(geojson){
-    geoLayers.best.clearLayers();
-    geoLayers.good.clearLayers();
-    const features = Array.isArray(geojson) ? geojson[0].features : geojson.features;
+function loadGeoJSON(geojson, fileName = ''){
+    const features = Array.isArray(geojson) ? geojson.flatMap(entry => entry?.features || []) : (geojson?.features || []);
+    if (!features.length) return;
+
     features.forEach(feat => {
         const gc     = feat.properties.gridcode || feat.properties.GRIDCODE || 2;
         const isBest = parseInt(gc) === 1;
@@ -419,13 +436,14 @@ function loadGeoJSON(geojson){
             }
         });
         const area   = feat.properties.Shape_Area || feat.properties.shape_area || feat.properties.area_m2 || 0;
-const areaDonum = (parseFloat(area) / 1000).toFixed(2);
+        const areaDonum = (parseFloat(area) / 1000).toFixed(2);
         poly.bindPopup(`<div style="font-family:Cairo;direction:rtl;padding:4px;min-width:160px">
             <h6 style="color:${isBest?'#16a34a':'#65a30d'};font-weight:700;border-bottom:2px solid ${isBest?'#22c55e':'#84cc16'};padding-bottom:4px">
                 ${isBest?'🌟 أرض ممتازة':'✅ أرض جيدة'}</h6>
             <div style="font-size:12px;color:#475569">
                 <div>التصنيف: ${isBest?'ممتاز (1)':'جيد (2)'}</div>
                 <div>المساحة: ${areaDonum} دونم</div>
+                ${fileName?`<div style="margin-top:4px;color:#64748b">المصدر: ${fileName}</div>`:''}
             </div></div>`);
         if(isBest) geoLayers.best.addLayer(poly);
         else       geoLayers.good.addLayer(poly);
@@ -446,7 +464,7 @@ function toggleCamps(show){
 
 // ===== GIS ANALYSIS: CAMPS INSIDE BEST LANDS =====
 function analyzeLandSuitability(){
-    if(!geojsonData){ alert('يرجى رفع ملف الـ Shapefile أولاً'); return; }
+    if(!geojsonData.length){ alert('يرجى رفع ملف الـ Shapefile أولاً'); return; }
     const btn = document.getElementById('btn-gis');
     btn.disabled = true;
     document.getElementById('gis-spinner').style.display = 'block';
@@ -454,7 +472,7 @@ function analyzeLandSuitability(){
     document.getElementById('gis-text').textContent     = 'جاري التحليل...';
 
     setTimeout(() => {
-        const features = Array.isArray(geojsonData) ? geojsonData[0].features : geojsonData.features;
+        const features = getAllFeatures();
         const results  = [];
 
         CAMPS_DATA.forEach(camp => {
@@ -524,7 +542,6 @@ async function analyzeRoutes(){
         const cLat = +camp.latitude, cLng = +camp.longitude;
         if(isNaN(cLat)||isNaN(cLng)) continue;
 
-        // إيجاد أقرب مستشفى بالمسافة الهوائية أولاً
         let nearest = null, minD = Infinity;
         HOSPITALS_INIT.forEach(h => {
             const d = haversine(cLat, cLng, +h.latitude, +h.longitude);
@@ -532,6 +549,7 @@ async function analyzeRoutes(){
         });
         if(!nearest) continue;
 
+        const isInsideArea = isPointInStudyArea(cLat, cLng) && isPointInStudyArea(+nearest.latitude, +nearest.longitude);
         let roadDistKm  = null;
         let roadMinutes = null;
         let usedRoad    = false;
@@ -566,18 +584,18 @@ async function analyzeRoutes(){
             // رسم المسار الحقيقي على الخريطة
             const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
             const line   = L.polyline(coords, {
-                color:     '#10b981',
+                color:     isInsideArea ? '#10b981' : '#ef4444',
                 weight:    5,
                 opacity:   0.85,
                 lineJoin:  'round',
-                lineCap:   'round'
+                lineCap:   'round',
+                dashArray: isInsideArea ? undefined : '8,6'
             }).addTo(map);
 
-            // popup على المسار
             line.bindPopup(`<div style="font-family:Cairo;direction:rtl;font-size:12px;padding:4px">
                 <b><i class="fas fa-campground text-primary"></i> ${camp.name}</b><br>
                 <i class="fas fa-hospital-alt text-danger"></i> ${nearest.name}<br>
-                <i class="fas fa-road" style="color:#10b981"></i> ${roadDistKm} كم • ${roadMinutes} دقيقة
+                <i class="fas fa-road" style="color:${isInsideArea ? '#10b981' : '#ef4444'}"></i> ${isInsideArea ? `${roadDistKm} كم • ${roadMinutes} دقيقة` : 'خارج منطقة الدراسة'}
             </div>`);
 
             routeLayers.push(line);
@@ -587,7 +605,7 @@ async function analyzeRoutes(){
 
             // احتياطي: خط مستقيم متقطع
             const line = L.polyline([[cLat,cLng],[+nearest.latitude,+nearest.longitude]], {
-                color:     '#f59e0b',
+                color:     isInsideArea ? '#f59e0b' : '#ef4444',
                 weight:    3,
                 opacity:   0.75,
                 dashArray: '8,6'
@@ -601,11 +619,11 @@ async function analyzeRoutes(){
             : `<span class="badge-straight"><i class="fas fa-ruler"></i> هوائي</span>${minD.toFixed(2)} كم`;
 
         const div = document.createElement('div');
-        div.className = 'result-card inside';
+        div.className = isInsideArea ? 'result-card inside' : 'result-card outside';
         div.innerHTML = `
             <div class="rc-camp"><i class="fas fa-campground text-primary me-1"></i>${camp.name}</div>
-            <div class="rc-status inside"><i class="fas fa-hospital-alt me-1"></i>${nearest.name}</div>
-            <div class="rc-dist" style="margin-top:5px">${distLabel}</div>`;
+            <div class="rc-status ${isInsideArea ? 'inside' : 'outside'}"><i class="fas fa-hospital-alt me-1"></i>${nearest.name}</div>
+            <div class="rc-dist" style="margin-top:5px">${isInsideArea ? distLabel : `<span style="color:#dc2626;font-weight:700">⚠️ خارج منطقة الدراسة</span>`}</div>`;
         container.appendChild(div);
     }
 
@@ -847,7 +865,7 @@ const score = (areaDonum / minAreaDonum) * 0.5 + ((maxHospKm - minHospDist) / ma
             const campLat = +result.camp.latitude, campLng = +result.camp.longitude;
             const arrow = L.polyline(
                 [[campLat, campLng], [result.bestCandidate.cy, result.bestCandidate.cx]],
-                { color: '#6366f1', weight: 2, opacity: 0.6, dashArray: '5,5' }
+                { color: '#d97706', weight: 3, opacity: 0.85, dashArray: '6,4' }
             ).addTo(map);
             relocationLayers.push(arrow);
         });
