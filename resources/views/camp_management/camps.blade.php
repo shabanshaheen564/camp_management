@@ -4,6 +4,42 @@
 @section('page-title', 'إدارة المخيمات')
 @section('page-icon', 'fa-tent')
 
+@push('styles')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .coordinate-picker-btn {
+            width: 100%;
+            border: 1px dashed #2563eb;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #eff6ff, #f8fafc);
+            color: #1d4ed8;
+            padding: 10px 12px;
+            text-align: right;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .coordinate-picker-btn:hover {
+            background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        }
+
+        .coordinate-picker-meta {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 6px;
+        }
+
+        #coordinateMap {
+            height: 420px;
+            width: 100%;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+        }
+    </style>
+@endpush
+
 @section('content')
 
     {{-- رأس الصفحة --}}
@@ -221,15 +257,17 @@
                                     <option value="full">ممتلئ</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">خط العرض (Latitude)</label>
-                                <input type="number" name="latitude" id="f_latitude" class="form-control" step="0.00000001"
-                                    placeholder="31.5">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">خط الطول (Longitude)</label>
-                                <input type="number" name="longitude" id="f_longitude" class="form-control"
-                                    step="0.00000001" placeholder="34.47">
+                            <div class="col-12">
+                                <label class="form-label">الموقع على الخريطة</label>
+                                <button type="button" class="coordinate-picker-btn" onclick="openCoordinatePicker()">
+                                    <span id="coordsPickerLabel">اختر الموقع على الخريطة</span>
+                                    <i class="fas fa-map-marked-alt"></i>
+                                </button>
+                                <div id="coordsPickerHint" class="coordinate-picker-meta">
+                                    اضغط على الزر لفتح الخريطة واختيار الموقع مباشرةً.
+                                </div>
+                                <input type="hidden" name="latitude" id="f_latitude" value="">
+                                <input type="hidden" name="longitude" id="f_longitude" value="">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">الحالة التشغيلية</label>
@@ -279,10 +317,92 @@
     </div>
 </div>
 
+<div class="modal fade" id="coordinateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">اختر الموقع على الخريطة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="coordinateMap"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        let coordinatePickerMap = null;
+        let coordinatePickerMarker = null;
+
+        function updateCoordinatePickerUI() {
+            const lat = document.getElementById('f_latitude').value;
+            const lng = document.getElementById('f_longitude').value;
+            const label = document.getElementById('coordsPickerLabel');
+            const hint = document.getElementById('coordsPickerHint');
+
+            if (lat && lng) {
+                label.textContent = `تم الاختيار: ${lat}, ${lng}`;
+                label.classList.add('text-primary');
+                hint.textContent = 'اضغط مرة أخرى لتغيير الموقع.';
+            } else {
+                label.textContent = 'اختر الموقع على الخريطة';
+                label.classList.remove('text-primary');
+                hint.textContent = 'اضغط على الزر لفتح الخريطة واختيار الموقع مباشرةً.';
+            }
+        }
+
+        function initCoordinatePickerMap() {
+            if (coordinatePickerMap) return;
+
+            coordinatePickerMap = L.map('coordinateMap').setView([31.52, 34.44], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 19
+            }).addTo(coordinatePickerMap);
+
+            coordinatePickerMap.on('click', function (e) {
+                const lat = e.latlng.lat.toFixed(6);
+                const lng = e.latlng.lng.toFixed(6);
+                document.getElementById('f_latitude').value = lat;
+                document.getElementById('f_longitude').value = lng;
+                updateCoordinatePickerUI();
+
+                if (coordinatePickerMarker) coordinatePickerMarker.remove();
+                coordinatePickerMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(coordinatePickerMap);
+                coordinatePickerMarker.bindPopup('<div style="font-family:Cairo,sans-serif;direction:rtl">📍 تم اختيار الموقع</div>').openPopup();
+
+                const modal = bootstrap.Modal.getInstance(document.getElementById('coordinateModal'));
+                if (modal) modal.hide();
+            });
+        }
+
+        function openCoordinatePicker() {
+            const modal = new bootstrap.Modal(document.getElementById('coordinateModal'));
+            modal.show();
+
+            setTimeout(() => {
+                initCoordinatePickerMap();
+                coordinatePickerMap.invalidateSize();
+
+                const lat = parseFloat(document.getElementById('f_latitude').value);
+                const lng = parseFloat(document.getElementById('f_longitude').value);
+
+                if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+                    coordinatePickerMap.setView([lat, lng], 15);
+                    if (coordinatePickerMarker) coordinatePickerMarker.remove();
+                    coordinatePickerMarker = L.marker([lat, lng]).addTo(coordinatePickerMap);
+                    coordinatePickerMarker.bindPopup('<div style="font-family:Cairo,sans-serif;direction:rtl">📍 الموقع الحالي</div>').openPopup();
+                } else {
+                    coordinatePickerMap.setView([31.52, 34.44], 13);
+                }
+            }, 350);
+        }
+
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'إضافة مخيم جديد';
             document.getElementById('campForm').action = "{{ route('camps.store') }}";
@@ -296,6 +416,7 @@
             document.getElementById('f_status').value = 'active';
             document.getElementById('f_latitude').value = '';
             document.getElementById('f_longitude').value = '';
+            updateCoordinatePickerUI();
             document.getElementById('f_is_active').value = '1';
             document.getElementById('f_description').value = '';
             new bootstrap.Modal(document.getElementById('campModal')).show();
@@ -314,6 +435,7 @@
             document.getElementById('f_status').value = camp.status;
             document.getElementById('f_latitude').value = camp.latitude ?? '';
             document.getElementById('f_longitude').value = camp.longitude ?? '';
+            updateCoordinatePickerUI();
             document.getElementById('f_is_active').value = camp.is_active ? '1' : '0';
             document.getElementById('f_description').value = camp.description ?? '';
             new bootstrap.Modal(document.getElementById('campModal')).show();
