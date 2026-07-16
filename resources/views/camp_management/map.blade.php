@@ -174,6 +174,13 @@
             <div class="layer-legend" id="layer-controls" style="display:none">
                 <h6><i class="fas fa-sliders-h me-1"></i>تحكم بالطبقات</h6>
                 <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggle-study" checked onchange="toggleLayer('study', this.checked)">
+                    <label class="form-check-label" style="font-size:12px" for="toggle-study">
+                        <span class="legend-swatch d-inline-block" style="background:#2563eb;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
+                        حدود منطقة الدراسة
+                    </label>
+                </div>
+                <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="toggle-best" checked onchange="toggleLayer('best', this.checked)">
                     <label class="form-check-label" style="font-size:12px" for="toggle-best">
                         <span class="legend-swatch d-inline-block" style="background:#22c55e;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
@@ -330,7 +337,7 @@ const hospTmpIcon  = mkIcon('#f97316','fas fa-map-pin');
 let hospitalMarkers = {};
 let routeLayers     = [];
 let tempMarker      = null;
-let geoLayers       = { best: L.layerGroup(), good: L.layerGroup() };
+let geoLayers       = { best: L.layerGroup(), good: L.layerGroup(), study: L.layerGroup() };
 let campMarkers     = [];
 let geojsonData     = [];
 let uploadedShapefiles = [];
@@ -411,8 +418,37 @@ function getSelectedBestSiteFeatures(){
     return selected?.features || [];
 }
 
+function renderStudyAreaLayer(fileEntry){
+    geoLayers.study.clearLayers();
+    if (!fileEntry?.features?.length) return;
+
+    const style = {
+        fillColor: '#2563eb',
+        fillOpacity: 0.18,
+        color: '#1d4ed8',
+        weight: 2.2,
+        opacity: 0.9,
+        dashArray: '6,4'
+    };
+
+    fileEntry.features.forEach(feat => {
+        const poly = L.geoJSON(feat, { style }).addTo(geoLayers.study);
+        poly.bindPopup(`<div style="font-family:Cairo;direction:rtl;padding:4px;min-width:150px">
+            <h6 style="color:#1d4ed8;font-weight:700;border-bottom:2px solid #2563eb;padding-bottom:4px">📏 حدود منطقة الدراسة</h6>
+            <div style="font-size:12px;color:#475569">يظهر هذا الطبق بشكل منفصل ويُمكن تشغيله وإخفاؤه</div>
+        </div>`);
+    });
+
+    const toggle = document.getElementById('toggle-study');
+    if (toggle?.checked) geoLayers.study.addTo(map);
+}
+
 function setSelectedShapefile(type, id){
-    if (type === 'study') selectedStudyAreaFileId = id;
+    if (type === 'study') {
+        selectedStudyAreaFileId = id;
+        const selected = uploadedShapefiles.find(item => item.id === id);
+        renderStudyAreaLayer(selected);
+    }
     if (type === 'bestSite') selectedBestSiteFileId = id;
 }
 
@@ -439,6 +475,12 @@ function refreshShapefileSelectors(){
     if (uploadedShapefiles.some(item => item.id === currentBest)) bestSelect.value = currentBest;
 }
 
+function toggleLayer(type, show){
+    const layer = geoLayers[type];
+    if(!layer) return;
+    if(show) layer.addTo(map); else map.removeLayer(layer);
+}
+
 function isPointInStudyArea(lat, lng){
     const features = getSelectedStudyAreaFeatures();
     if (!features.length) return true;
@@ -460,6 +502,10 @@ async function processShapefile(file){
         geojsonData.push(geojson);
         loadGeoJSON(geojson, file.name);
         refreshShapefileSelectors();
+        if (!selectedStudyAreaFileId && uploadedShapefiles.length === 1) {
+            selectedStudyAreaFileId = fileEntry.id;
+            renderStudyAreaLayer(fileEntry);
+        }
         icon.className  = 'fas fa-check-circle';
         icon.style.color = '#10b981';
         const count = getAllFeatures().length;
@@ -509,10 +555,6 @@ function loadGeoJSON(geojson, fileName = ''){
     if(bounds.isValid()) map.fitBounds(bounds, {padding:[30,30]});
 }
 
-function toggleLayer(type, show){
-    const layer = geoLayers[type];
-    if(show) layer.addTo(map); else map.removeLayer(layer);
-}
 function toggleCamps(show){
     campMarkers.forEach(m => show ? m.addTo(map) : map.removeLayer(m));
 }
@@ -527,7 +569,7 @@ function analyzeLandSuitability(){
     document.getElementById('gis-text').textContent     = 'جاري التحليل...';
 
     setTimeout(() => {
-        const features = getAllFeatures();
+        const features = getSelectedBestSiteFeatures();
         const results  = [];
 
         CAMPS_DATA.forEach(camp => {
