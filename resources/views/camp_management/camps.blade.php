@@ -221,15 +221,19 @@
                                     <option value="full">ممتلئ</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">خط العرض (Latitude)</label>
-                                <input type="number" name="latitude" id="f_latitude" class="form-control" step="0.00000001"
-                                    placeholder="31.5">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">خط الطول (Longitude)</label>
-                                <input type="number" name="longitude" id="f_longitude" class="form-control"
-                                    step="0.00000001" placeholder="34.47">
+                            <div class="col-12">
+                                <label class="form-label">الموقع على الخريطة</label>
+                                <button type="button" class="btn btn-outline-primary w-100" id="pickCoordsBtn"
+                                    onclick="showCoordMapModal()">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    <span id="pickCoordsBtnText">اختر على الخريطة</span>
+                                </button>
+                                <div class="form-text mt-2" id="coordPreview" style="display:none;">
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    تم اختيار الإحداثيات: <span id="coordPreviewText">-</span>
+                                </div>
+                                <input type="hidden" name="latitude" id="f_latitude" value="">
+                                <input type="hidden" name="longitude" id="f_longitude" value="">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">الحالة التشغيلية</label>
@@ -253,6 +257,20 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="coordsMapModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">اختيار الموقع على الخريطة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div id="coordsMap" style="height:480px; width:100%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- مودال تأكيد الحذف --}}
  {{-- مودال الحذف --}}
 <div class="modal fade" id="deleteModal" tabindex="-1">
@@ -281,8 +299,76 @@
 
 @endsection
 
+@push('styles')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+@endpush
+
 @push('scripts')
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        let coordMapInstance = null;
+        let coordMapMarker = null;
+
+        function updateCoordButtonUI() {
+            const lat = document.getElementById('f_latitude').value;
+            const lng = document.getElementById('f_longitude').value;
+            const preview = document.getElementById('coordPreview');
+            const previewText = document.getElementById('coordPreviewText');
+            const btnText = document.getElementById('pickCoordsBtnText');
+
+            if (lat && lng) {
+                preview.style.display = 'block';
+                previewText.textContent = `${lat}, ${lng}`;
+                btnText.textContent = 'تعديل الموقع على الخريطة';
+            } else {
+                preview.style.display = 'none';
+                btnText.textContent = 'اختر على الخريطة';
+            }
+        }
+
+        function showCoordMapModal() {
+            const modal = new bootstrap.Modal(document.getElementById('coordsMapModal'));
+            modal.show();
+
+            setTimeout(() => {
+                if (!coordMapInstance) {
+                    coordMapInstance = L.map('coordsMap').setView([31.52, 34.44], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap',
+                        maxZoom: 19
+                    }).addTo(coordMapInstance);
+
+                    coordMapInstance.on('click', function (e) {
+                        const lat = e.latlng.lat.toFixed(6);
+                        const lng = e.latlng.lng.toFixed(6);
+                        document.getElementById('f_latitude').value = lat;
+                        document.getElementById('f_longitude').value = lng;
+                        updateCoordButtonUI();
+
+                        if (coordMapMarker) {
+                            coordMapInstance.removeLayer(coordMapMarker);
+                        }
+                        coordMapMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(coordMapInstance);
+                        modal.hide();
+                    });
+                }
+
+                coordMapInstance.invalidateSize();
+                const lat = parseFloat(document.getElementById('f_latitude').value);
+                const lng = parseFloat(document.getElementById('f_longitude').value);
+
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    coordMapInstance.setView([lat, lng], 15);
+                    if (coordMapMarker) {
+                        coordMapInstance.removeLayer(coordMapMarker);
+                    }
+                    coordMapMarker = L.marker([lat, lng]).addTo(coordMapInstance);
+                } else {
+                    coordMapInstance.setView([31.52, 34.44], 13);
+                }
+            }, 250);
+        }
+
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'إضافة مخيم جديد';
             document.getElementById('campForm').action = "{{ route('camps.store') }}";
@@ -298,6 +384,7 @@
             document.getElementById('f_longitude').value = '';
             document.getElementById('f_is_active').value = '1';
             document.getElementById('f_description').value = '';
+            updateCoordButtonUI();
             new bootstrap.Modal(document.getElementById('campModal')).show();
         }
 
@@ -316,24 +403,26 @@
             document.getElementById('f_longitude').value = camp.longitude ?? '';
             document.getElementById('f_is_active').value = camp.is_active ? '1' : '0';
             document.getElementById('f_description').value = camp.description ?? '';
+            updateCoordButtonUI();
             new bootstrap.Modal(document.getElementById('campModal')).show();
         }
 
-      function openDeleteModal(id) {
-    document.getElementById('deleteForm').action = `/camps/${id}`;
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
-}
-// إصلاح مشكلة بقاء الـ backdrop بعد إغلاق المودال
-document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('hidden.bs.modal', function () {
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('overflow');
-        document.body.style.removeProperty('padding-right');
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
-    });
-});
+        function openDeleteModal(id) {
+            document.getElementById('deleteForm').action = `/camps/${id}`;
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        }
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', function () {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', updateCoordButtonUI);
     </script>
-    
 @endpush
