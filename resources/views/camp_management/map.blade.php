@@ -109,8 +109,9 @@
             <div class="ml-item"><div class="ml-dot" style="background:#2563eb"></div> مخيم</div>
             <div class="ml-item"><div class="ml-dot" style="background:#dc2626"></div> مستشفى</div>
             <div class="ml-item"><div class="ml-sq" style="background:#22c55e"></div> مناطق ممتازة (gridcode 1)</div>
-            <div class="ml-item"><div class="ml-sq" style="background:#2563eb"></div> مناطق جيدة (gridcode 2)</div>
-            <div class="ml-item"><div class="ml-dot" style="background:#10b981"></div> مسار داخل منطقة الدراسة</div>
+            <div class="ml-item"><div class="ml-sq" style="background:#f59e0b"></div> مناطق جيدة (gridcode 2)</div>
+            <div class="ml-item"><div class="ml-sq" style="background:transparent;border:2px dashed #1d4ed8;width:14px;height:11px"></div> حدود منطقة الدراسة</div>
+            <div class="ml-item"><div class="ml-dot" style="background:#f59e0b"></div> مسار داخل منطقة الدراسة</div>
             <div class="ml-item"><div class="ml-dot" style="background:#ef4444"></div> خارج منطقة الدراسة</div>
         </div>
     </div>
@@ -190,7 +191,7 @@
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="toggle-good" checked onchange="toggleLayer('good', this.checked)">
                     <label class="form-check-label" style="font-size:12px" for="toggle-good">
-                        <span class="legend-swatch d-inline-block" style="background:#2563eb;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
+                        <span class="legend-swatch d-inline-block" style="background:#f59e0b;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
                         مناطق جيدة (gridcode 2)
                     </label>
                 </div>
@@ -423,11 +424,11 @@ function renderStudyAreaLayer(fileEntry){
     if (!fileEntry?.features?.length) return;
 
     const style = {
-        fillColor: '#2563eb',
-        fillOpacity: 0.18,
+        fillColor: 'transparent',
+        fillOpacity: 0,
         color: '#1d4ed8',
-        weight: 2.2,
-        opacity: 0.9,
+        weight: 2.4,
+        opacity: 0.95,
         dashArray: '6,4'
     };
 
@@ -530,16 +531,16 @@ function loadGeoJSON(geojson, fileName = ''){
         const isBest = parseInt(gc) === 1;
         const poly   = L.geoJSON(feat, {
             style: {
-                fillColor:   isBest ? '#22c55e' : '#2563eb',
+                fillColor:   isBest ? '#22c55e' : '#f59e0b',
                 fillOpacity: 0.45,
-                color:       isBest ? '#16a34a' : '#1d4ed8',
+                color:       isBest ? '#16a34a' : '#d97706',
                 weight: 1.5, opacity: 0.8,
             }
         });
         const area   = feat.properties.Shape_Area || feat.properties.shape_area || feat.properties.area_m2 || 0;
         const areaDonum = (parseFloat(area) / 1000).toFixed(2);
         poly.bindPopup(`<div style="font-family:Cairo;direction:rtl;padding:4px;min-width:160px">
-            <h6 style="color:${isBest?'#16a34a':'#65a30d'};font-weight:700;border-bottom:2px solid ${isBest?'#22c55e':'#84cc16'};padding-bottom:4px">
+            <h6 style="color:${isBest?'#16a34a':'#d97706'};font-weight:700;border-bottom:2px solid ${isBest?'#22c55e':'#f59e0b'};padding-bottom:4px">
                 ${isBest?'🌟 أرض ممتازة':'✅ أرض جيدة'}</h6>
             <div style="font-size:12px;color:#475569">
                 <div>التصنيف: ${isBest?'ممتاز (1)':'جيد (2)'}</div>
@@ -681,7 +682,7 @@ async function analyzeRoutes(){
             // رسم المسار الحقيقي على الخريطة
             const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
             const line   = L.polyline(coords, {
-                color:     isInsideArea ? '#10b981' : '#ef4444',
+                color:     isInsideArea ? '#f59e0b' : '#ef4444',
                 weight:    5,
                 opacity:   0.85,
                 lineJoin:  'round',
@@ -692,7 +693,7 @@ async function analyzeRoutes(){
             line.bindPopup(`<div style="font-family:Cairo;direction:rtl;font-size:12px;padding:4px">
                 <b><i class="fas fa-campground text-primary"></i> ${camp.name}</b><br>
                 <i class="fas fa-hospital-alt text-danger"></i> ${nearest.name}<br>
-                <i class="fas fa-road" style="color:${isInsideArea ? '#10b981' : '#ef4444'}"></i> ${isInsideArea ? `${roadDistKm} كم • ${roadMinutes} دقيقة` : 'خارج منطقة الدراسة'}
+                <i class="fas fa-road" style="color:${isInsideArea ? '#f59e0b' : '#ef4444'}"></i> ${isInsideArea ? `${roadDistKm} كم • ${roadMinutes} دقيقة` : 'خارج منطقة الدراسة'}
             </div>`);
 
             routeLayers.push(line);
