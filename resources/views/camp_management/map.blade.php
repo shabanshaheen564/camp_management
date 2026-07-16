@@ -108,10 +108,10 @@
         <div class="map-legend-box">
             <div class="ml-item"><div class="ml-dot" style="background:#2563eb"></div> مخيم</div>
             <div class="ml-item"><div class="ml-dot" style="background:#dc2626"></div> مستشفى</div>
-            <div class="ml-item"><div class="ml-sq" style="background:#22c55e"></div> أفضل الأراضي (ممتاز)</div>
-            <div class="ml-item"><div class="ml-sq" style="background:#84cc16"></div> أفضل الأراضي (جيد)</div>
-            <div class="ml-item"><div class="ml-dot" style="background:#10b981"></div> مسار طريق حقيقي</div>
-            <div class="ml-item"><div class="ml-dot" style="background:#f59e0b"></div> خط مستقيم (احتياطي)</div>
+            <div class="ml-item"><div class="ml-sq" style="background:#22c55e"></div> مناطق ممتازة (gridcode 1)</div>
+            <div class="ml-item"><div class="ml-sq" style="background:#2563eb"></div> مناطق جيدة (gridcode 2)</div>
+            <div class="ml-item"><div class="ml-dot" style="background:#10b981"></div> مسار داخل منطقة الدراسة</div>
+            <div class="ml-item"><div class="ml-dot" style="background:#ef4444"></div> خارج منطقة الدراسة</div>
         </div>
     </div>
 
@@ -157,6 +157,19 @@
             </div>
             <input type="file" id="shp-input" accept=".zip,.shp" onchange="handleFileSelect(event)" multiple>
 
+            <div class="mb-2">
+                <label class="form-label" style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">ملف حدود منطقة الدراسة</label>
+                <select id="study-area-file" class="form-select form-select-sm" onchange="setSelectedShapefile('study', this.value)" disabled>
+                    <option value="">اختر ملفًا</option>
+                </select>
+            </div>
+            <div class="mb-2">
+                <label class="form-label" style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">ملف أفضل المواقع</label>
+                <select id="best-site-file" class="form-select form-select-sm" onchange="setSelectedShapefile('bestSite', this.value)" disabled>
+                    <option value="">اختر ملفًا</option>
+                </select>
+            </div>
+
             {{-- Layer controls --}}
             <div class="layer-legend" id="layer-controls" style="display:none">
                 <h6><i class="fas fa-sliders-h me-1"></i>تحكم بالطبقات</h6>
@@ -164,14 +177,14 @@
                     <input class="form-check-input" type="checkbox" id="toggle-best" checked onchange="toggleLayer('best', this.checked)">
                     <label class="form-check-label" style="font-size:12px" for="toggle-best">
                         <span class="legend-swatch d-inline-block" style="background:#22c55e;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
-                        أفضل الأراضي (gridcode 1)
+                        مناطق ممتازة (gridcode 1)
                     </label>
                 </div>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="toggle-good" checked onchange="toggleLayer('good', this.checked)">
                     <label class="form-check-label" style="font-size:12px" for="toggle-good">
-                        <span class="legend-swatch d-inline-block" style="background:#84cc16;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
-                        أراضي جيدة (gridcode 2)
+                        <span class="legend-swatch d-inline-block" style="background:#2563eb;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-left:4px"></span>
+                        مناطق جيدة (gridcode 2)
                     </label>
                 </div>
                 <div class="form-check form-switch">
@@ -320,6 +333,9 @@ let tempMarker      = null;
 let geoLayers       = { best: L.layerGroup(), good: L.layerGroup() };
 let campMarkers     = [];
 let geojsonData     = [];
+let uploadedShapefiles = [];
+let selectedStudyAreaFileId = '';
+let selectedBestSiteFileId = '';
 
 // ===== DRAW CAMPS =====
 const campBounds = [];
@@ -380,21 +396,57 @@ function handleFileSelect(e){
 }
 
 function getAllFeatures(){
-    return geojsonData.flatMap(item => {
-        if (Array.isArray(item)) {
-            return item.flatMap(entry => entry?.features || []);
-        }
-        return item?.features || [];
+    return uploadedShapefiles.flatMap(item => item.features || []);
+}
+
+function getSelectedStudyAreaFeatures(){
+    if (!selectedStudyAreaFileId) return getAllFeatures();
+    const selected = uploadedShapefiles.find(item => item.id === selectedStudyAreaFileId);
+    return selected?.features || [];
+}
+
+function getSelectedBestSiteFeatures(){
+    if (!selectedBestSiteFileId) return getAllFeatures();
+    const selected = uploadedShapefiles.find(item => item.id === selectedBestSiteFileId);
+    return selected?.features || [];
+}
+
+function setSelectedShapefile(type, id){
+    if (type === 'study') selectedStudyAreaFileId = id;
+    if (type === 'bestSite') selectedBestSiteFileId = id;
+}
+
+function refreshShapefileSelectors(){
+    const studySelect = document.getElementById('study-area-file');
+    const bestSelect = document.getElementById('best-site-file');
+    const currentStudy = studySelect.value;
+    const currentBest = bestSelect.value;
+
+    studySelect.innerHTML = '<option value="">اختر ملفًا</option>';
+    bestSelect.innerHTML = '<option value="">اختر ملفًا</option>';
+
+    uploadedShapefiles.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name;
+        studySelect.appendChild(opt.cloneNode(true));
+        bestSelect.appendChild(opt.cloneNode(true));
     });
+
+    studySelect.disabled = !uploadedShapefiles.length;
+    bestSelect.disabled = !uploadedShapefiles.length;
+    if (uploadedShapefiles.some(item => item.id === currentStudy)) studySelect.value = currentStudy;
+    if (uploadedShapefiles.some(item => item.id === currentBest)) bestSelect.value = currentBest;
 }
 
 function isPointInStudyArea(lat, lng){
-    const features = getAllFeatures();
+    const features = getSelectedStudyAreaFeatures();
     if (!features.length) return true;
     return features.some(feat => pointInPolygon([lng, lat], feat.geometry));
 }
 
 async function processShapefile(file){
+
     const icon = document.getElementById('upload-icon');
     const text = document.getElementById('upload-text');
     icon.className = 'fas fa-spinner fa-spin';
@@ -402,12 +454,15 @@ async function processShapefile(file){
     try {
         const buffer  = await file.arrayBuffer();
         const geojson = await shp(buffer);
+        const features = Array.isArray(geojson) ? geojson.flatMap(entry => entry?.features || []) : (geojson?.features || []);
+        const fileEntry = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, name: file.name, features };
+        uploadedShapefiles.push(fileEntry);
         geojsonData.push(geojson);
         loadGeoJSON(geojson, file.name);
+        refreshShapefileSelectors();
         icon.className  = 'fas fa-check-circle';
         icon.style.color = '#10b981';
-        const features = getAllFeatures();
-        const count = features.length;
+        const count = getAllFeatures().length;
         text.textContent = `✓ تم تحميل ${count} منطقة`;
         document.getElementById('cnt-polygons').textContent = count;
         document.getElementById('layer-controls').style.display = 'block';
@@ -429,10 +484,10 @@ function loadGeoJSON(geojson, fileName = ''){
         const isBest = parseInt(gc) === 1;
         const poly   = L.geoJSON(feat, {
             style: {
-                fillColor:   isBest ? '#22c55e' : '#84cc16',
-                fillOpacity: 0.35,
-                color:       isBest ? '#16a34a' : '#65a30d',
-                weight: 1, opacity: 0.7,
+                fillColor:   isBest ? '#22c55e' : '#2563eb',
+                fillOpacity: 0.45,
+                color:       isBest ? '#16a34a' : '#1d4ed8',
+                weight: 1.5, opacity: 0.8,
             }
         });
         const area   = feat.properties.Shape_Area || feat.properties.shape_area || feat.properties.area_m2 || 0;
@@ -713,7 +768,7 @@ function pointInPolygon(point, geometry){
 let relocationLayers = [];
 
 async function analyzeRelocation() {
-    if (!geojsonData) { alert('يرجى رفع ملف الـ Shapefile أولاً من تبويب "الطبقات"'); return; }
+    if (!uploadedShapefiles.length) { alert('يرجى رفع ملف الـ Shapefile أولاً من تبويب "الطبقات"'); return; }
 
 const minAreaDonum = parseFloat(document.getElementById('rel-min-area').value) || 20000;
     const maxHospKm   = parseFloat(document.getElementById('rel-max-hosp').value)   || 10;
@@ -729,7 +784,7 @@ const minAreaDonum = parseFloat(document.getElementById('rel-min-area').value) |
 
     await new Promise(r => setTimeout(r, 80)); // allow UI repaint
 
-    const features = Array.isArray(geojsonData) ? geojsonData[0].features : geojsonData.features;
+    const features = getSelectedBestSiteFeatures();
 
     // ── 1. فلترة المناطق حسب معايير المستخدم ──
     const candidatePolygons = [];
