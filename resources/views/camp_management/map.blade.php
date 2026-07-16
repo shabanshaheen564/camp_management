@@ -1115,7 +1115,7 @@
                     // رسم المسار الحقيقي على الخريطة
                     const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
                     const line = L.polyline(coords, {
-                        color: isInsideArea ? '#f59e0b' : '#ef4444',
+                        color: isInsideArea ? '#101e71' : '#ef4444',
                         weight: 5,
                         opacity: 0.85,
                         lineJoin: 'round',
@@ -1396,7 +1396,7 @@
                     const campLat = +result.camp.latitude, campLng = +result.camp.longitude;
                     const arrow = L.polyline(
                         [[campLat, campLng], [result.bestCandidate.cy, result.bestCandidate.cx]],
-                        { color: '#d97706', weight: 3, opacity: 0.85, dashArray: '6,4' }
+                        { color: '#b110ce', weight: 3, opacity: 0.85, dashArray: '6,4' }
                     ).addTo(map);
                     relocationLayers.push(arrow);
                 });
