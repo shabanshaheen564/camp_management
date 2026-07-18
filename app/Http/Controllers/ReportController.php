@@ -7,6 +7,7 @@ use App\Models\Camp;
 use App\Models\FamilyMember;
 use App\Models\Guardian;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -70,5 +71,43 @@ class ReportController extends Controller
             'totalCamps', 'totalFamilies', 'totalPersons', 'totalAids',
             'campsData', 'monthlyAids', 'monthlyGrowth', 'ageGroups'
         ));
+    }
+
+    /**
+     * Export camps list as CSV for opening in Excel.
+     */
+    public function exportCamps()
+    {
+        $camps = Camp::withCount('guardians')->orderBy('name')->get();
+
+        $filename = 'camps_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($camps) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fputs($handle, "\xEF\xBB\xBF");
+            // Header row
+            fputcsv($handle, ['ID', 'Name', 'Location', 'Active', 'Guardians Count', 'Created At']);
+
+            foreach ($camps as $camp) {
+                fputcsv($handle, [
+                    $camp->id,
+                    $camp->name,
+                    $camp->location ?? '',
+                    $camp->is_active ? 'Yes' : 'No',
+                    $camp->guardians_count,
+                    $camp->created_at?->toDateTimeString() ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

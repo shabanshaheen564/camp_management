@@ -5,6 +5,11 @@
 @section('content')
 <div class="page-header">
     <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i>التقارير والإحصائيات</h1>
+    <div class="ms-auto">
+        <a href="{{ route('reports.export.camps') }}" class="btn btn-sm btn-success">
+            <i class="fas fa-file-excel"></i> تصدير إلى Excel
+        </a>
+    </div>
 </div>
 
 {{-- بطاقات الإحصاء العامة --}}

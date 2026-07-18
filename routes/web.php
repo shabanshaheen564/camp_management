@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
 
     // التقارير
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export/camps', [ReportController::class, 'exportCamps'])->name('reports.export.camps');
 
     // الخريطة
     Route::get('/map', [MapController::class, 'index'])->name('map.index');
