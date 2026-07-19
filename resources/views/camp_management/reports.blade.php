@@ -7,73 +7,6 @@
     <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i>التقارير والإحصائيات</h1>
 </div>
 
-{{-- بطاقات التصدير --}}
-<div class="row g-3 mb-4">
-    {{-- تصدير المخيمات --}}
-    <div class="col-xl-4 col-md-6">
-        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #3b82f6">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    <i class="fas fa-campground" style="font-size: 2.5rem; color: #3b82f6;"></i>
-                </div>
-                <h5 class="card-title mb-3">تصدير المخيمات</h5>
-                <p class="text-muted small mb-3">تصدير قائمة جميع المخيمات إلى ملف Excel</p>
-                <a href="{{ route('reports.export.camps') }}" class="btn btn-primary btn-sm w-100">
-                    <i class="fas fa-download me-2"></i>تصدير جميع المخيمات
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {{-- تصدير العائلات --}}
-    <div class="col-xl-4 col-md-6">
-        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #10b981">
-            <div class="card-body">
-                <div class="text-center mb-3">
-                    <i class="fas fa-users" style="font-size: 2.5rem; color: #10b981;"></i>
-                </div>
-                <h5 class="card-title mb-3 text-center">تصدير العائلات</h5>
-                <p class="text-muted small mb-3 text-center">تصدير العائلات من مخيم محدد أو الكل</p>
-                <div class="mb-3">
-                    <select id="familiesCampFilter" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                        <option value="">-- جميع المخيمات --</option>
-                        @foreach($camps as $camp)
-                            <option value="{{ $camp->id }}">{{ $camp->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <a href="{{ route('reports.export.families') }}" id="exportFamiliesBtn" class="btn btn-success btn-sm w-100">
-                    <i class="fas fa-download me-2"></i>تصدير العائلات
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {{-- تصدير الأفراد --}}
-    <div class="col-xl-4 col-md-6">
-        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #f59e0b">
-            <div class="card-body">
-                <div class="text-center mb-3">
-                    <i class="fas fa-person" style="font-size: 2.5rem; color: #f59e0b;"></i>
-                </div>
-                <h5 class="card-title mb-3 text-center">تصدير الأفراد</h5>
-                <p class="text-muted small mb-3 text-center">تصدير أفراد من مخيم محدد أو الكل</p>
-                <div class="mb-3">
-                    <select id="membersCampFilter" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                        <option value="">-- جميع المخيمات --</option>
-                        @foreach($camps as $camp)
-                            <option value="{{ $camp->id }}">{{ $camp->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <a href="{{ route('reports.export.members') }}" id="exportMembersBtn" class="btn btn-warning btn-sm w-100">
-                    <i class="fas fa-download me-2"></i>تصدير الأفراد
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- بطاقات الإحصاء العامة --}}
 <div class="row g-3 mb-4">
     <div class="col-xl-3 col-md-6">
@@ -139,7 +72,7 @@
 </div>
 
 {{-- الصف الثاني من المخططات --}}
-<div class="row g-4">
+<div class="row g-4 mb-4">
     <div class="col-lg-7">
         <div class="card h-100">
             <div class="card-header">
@@ -157,6 +90,89 @@
             </div>
             <div class="card-body d-flex align-items-center justify-content-center">
                 <canvas id="ageChart" style="max-height:280px"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- بطاقات التصدير والطباعة --}}
+<div class="row g-3 mb-4">
+    {{-- طباعة الإحصائيات --}}
+    <div class="col-xl-3 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #8b5cf6">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-print" style="font-size: 2.5rem; color: #8b5cf6;"></i>
+                </div>
+                <h5 class="card-title mb-3">طباعة الإحصائيات</h5>
+                <p class="text-muted small mb-3">تقرير رسمي منسق للطباعة</p>
+                <a href="{{ route('reports.print') }}" target="_blank" class="btn btn-dark btn-sm w-100">
+                    <i class="fas fa-file-alt me-2"></i>عرض التقرير
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- تصدير المخيمات --}}
+    <div class="col-xl-3 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #3b82f6">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-campground" style="font-size: 2.5rem; color: #3b82f6;"></i>
+                </div>
+                <h5 class="card-title mb-3">تصدير المخيمات</h5>
+                <p class="text-muted small mb-3">تصدير قائمة جميع المخيمات</p>
+                <a href="{{ route('reports.export.camps') }}" class="btn btn-primary btn-sm w-100">
+                    <i class="fas fa-download me-2"></i>تصدير CSV
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- تصدير العائلات --}}
+    <div class="col-xl-3 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #10b981">
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-users" style="font-size: 2.5rem; color: #10b981;"></i>
+                </div>
+                <h5 class="card-title mb-3 text-center">تصدير العائلات</h5>
+                <p class="text-muted small mb-3 text-center">تصدير العائلات من مخيم محدد أو الكل</p>
+                <div class="mb-3">
+                    <select id="familiesCampFilter" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                        <option value="">-- جميع المخيمات --</option>
+                        @foreach($camps as $camp)
+                            <option value="{{ $camp->id }}">{{ $camp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <a href="{{ route('reports.export.families') }}" id="exportFamiliesBtn" class="btn btn-success btn-sm w-100">
+                    <i class="fas fa-download me-2"></i>تصدير CSV
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- تصدير الأفراد --}}
+    <div class="col-xl-3 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #f59e0b">
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-person" style="font-size: 2.5rem; color: #f59e0b;"></i>
+                </div>
+                <h5 class="card-title mb-3 text-center">تصدير الأفراد</h5>
+                <p class="text-muted small mb-3 text-center">تصدير أفراد من مخيم محدد أو الكل</p>
+                <div class="mb-3">
+                    <select id="membersCampFilter" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                        <option value="">-- جميع المخيمات --</option>
+                        @foreach($camps as $camp)
+                            <option value="{{ $camp->id }}">{{ $camp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <a href="{{ route('reports.export.members') }}" id="exportMembersBtn" class="btn btn-warning btn-sm w-100">
+                    <i class="fas fa-download me-2"></i>تصدير CSV
+                </a>
             </div>
         </div>
     </div>

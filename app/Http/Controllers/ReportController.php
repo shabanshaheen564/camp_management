@@ -77,6 +77,41 @@ class ReportController extends Controller
     }
 
     /**
+     * Show printable statistics report.
+     */
+    public function printStatistics()
+    {
+        $totalCamps    = Camp::where('is_active', true)->count();
+        $totalFamilies = Guardian::count();
+        $totalMembers  = FamilyMember::count();
+        $totalPersons  = $totalFamilies + $totalMembers;
+        $totalAids     = AidDistribution::count();
+
+        $camps = Camp::where('is_active', true)
+            ->withCount('guardians')
+            ->orderBy('name')
+            ->get();
+
+        $ageGroups = [
+            'أقل من 18' => FamilyMember::whereNotNull('date_of_birth')
+                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
+            '18 - 35' => FamilyMember::whereNotNull('date_of_birth')
+                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
+            '36 - 60' => FamilyMember::whereNotNull('date_of_birth')
+                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
+            'أكبر من 60' => FamilyMember::whereNotNull('date_of_birth')
+                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
+        ];
+
+        $totalDisplaced = $totalFamilies + $totalMembers;
+
+        return view('camp_management.reports_print', compact(
+            'totalCamps', 'totalFamilies', 'totalMembers', 'totalPersons',
+            'totalAids', 'camps', 'ageGroups', 'totalDisplaced'
+        ));
+    }
+
+    /**
      * Export camps list as CSV for opening in Excel.
      */
     public function exportCamps()

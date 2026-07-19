@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
 
     // التقارير
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/print', [ReportController::class, 'printStatistics'])->name('reports.print');
     Route::get('/reports/export/camps', [ReportController::class, 'exportCamps'])->name('reports.export.camps');
     Route::get('/reports/export/families', [ReportController::class, 'exportFamilies'])->name('reports.export.families');
     Route::get('/reports/export/members', [ReportController::class, 'exportMembers'])->name('reports.export.members');
