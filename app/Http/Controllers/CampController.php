@@ -141,27 +141,27 @@ public function update(Request $request, Camp $camp)
      */
     public function importPreview(Request $request)
     {
-       $request->validate([
-    'file' => ['required', 'file', 'max:10240', function ($attribute, $value, $fail) {
-        $ext = strtolower($value->getClientOriginalExtension());
-        if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
-            $fail('يجب أن يكون الملف من نوع: xlsx, xls, csv');
-        }
-    }],
-]);
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240', function ($attribute, $value, $fail) {
+                $ext = strtolower($value->getClientOriginalExtension());
+                if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
+                    $fail('يجب أن يكون الملف من نوع: xlsx, xls, csv');
+                }
+            }],
+        ]);
 
         $file = $request->file('file');
         $path = $file->getRealPath();
         $extension = strtolower($file->getClientOriginalExtension());
-        $storedPath = $file->store('imports');
 
-        $rows = [];
         $headers = [];
+        $rows = [];
 
         if ($extension === 'csv') {
             $handle = fopen($path, 'r');
             if ($handle !== false) {
                 $headers = fgetcsv($handle, 0, ',');
+                $headerMap = array_flip($headers);
                 while (($row = fgetcsv($handle, 0, ',')) !== false) {
                     $rows[] = array_combine($headers, $row);
                 }
@@ -190,7 +190,7 @@ public function update(Request $request, Camp $camp)
             'is_active' => 'نشط',
         ];
 
-        return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields', 'storedPath', 'extension'));
+        return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields'));
     }
 
     /**
@@ -200,42 +200,17 @@ public function update(Request $request, Camp $camp)
     {
         $request->validate([
             'mapping' => 'required|array',
+            'import_rows' => 'required|string',
+            'import_headers' => 'required|string',
         ]);
-$path = $request->input('import_file');
-$extension = $request->input('import_extension', 'xlsx');
 
-$fullPath = $path ? storage_path('app/' . $path) : null;
-
-if (!$fullPath || !file_exists($fullPath)) {
-    return redirect()->route('camps.import.form')->with('error', 'انتهت صلاحية الملف. يرجى رفعه مرة أخرى.');
-}
-
-      
-
+        $rows = json_decode($request->input('import_rows', '[]'), true) ?: [];
+        $headers = json_decode($request->input('import_headers', '[]'), true) ?: [];
         $mapping = $request->input('mapping', []);
         $nameColumn = $mapping['name'] ?? null;
 
         if (!$nameColumn) {
             return redirect()->route('camps.import.form')->with('error', 'يرجى تحديد عمود اسم المخيم.');
-        }
-
-        $rows = [];
-        if ($extension === 'csv') {
-            $handle = fopen($fullPath, 'r');
-            if ($handle !== false) {
-                $headers = fgetcsv($handle, 0, ',');
-                while (($row = fgetcsv($handle, 0, ',')) !== false) {
-                    $rows[] = array_combine($headers, $row);
-                }
-                fclose($handle);
-            }
-        } else {
-            if ($xlsx = SimpleXLSX::parse($fullPath)) {
-                $headers = $xlsx->headers()[0];
-                foreach ($xlsx->rows() as $row) {
-                    $rows[] = array_combine($headers, $row);
-                }
-            }
         }
 
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
@@ -286,13 +261,8 @@ if (!$fullPath || !file_exists($fullPath)) {
                 $results['created']++;
             }
         }
-        if ($path) {
-    Storage::delete($path);
-}
 
-        
-
-        return redirect()->route('camps.index')->with('success', 
+        return redirect()->route('camps.index')->with('success',
             "تم الاستيراد بنجاح: {$results['created']} جديد، {$results['updated']} محدث."
         )->with('import_errors', $results['errors']);
     }
