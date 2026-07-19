@@ -178,13 +178,20 @@ fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 
         $callback = function () use ($families) {
             $handle = fopen('php://output', 'w');
             fputs($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['ID', 'Guardian Name', 'Phone', 'Camp', 'Family Members', 'Created At']);
+            fputcsv($handle, ['ID', 'Guardian Name', 'Card ID', 'Phone', 'Gender', 'Date of Birth', 'Nationality', 'Marital Status', 'Address', 'Disabled', 'Camp', 'Family Members Count', 'Created At']);
 
             foreach ($families as $family) {
                 fputcsv($handle, [
                     $family->id,
                     $family->full_name,
+                    $family->card_id ?? '',
                     $family->phone ?? '',
+                    $family->gender ?? '',
+                    $family->date_of_birth?->format('Y-m-d') ?? '',
+                    $family->nationality ?? '',
+                    $family->marital_status ?? '',
+                    $family->address ?? '',
+                    $family->is_disabled ? 'Yes' : 'No',
                     $family->camp?->name ?? 'N/A',
                     $family->familyMembers()->count(),
                     $family->created_at?->toDateTimeString() ?? '',
@@ -223,14 +230,19 @@ fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 
         $callback = function () use ($members) {
             $handle = fopen('php://output', 'w');
             fputs($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['ID', 'Name', 'Relationship', 'Date of Birth', 'Guardian', 'Camp', 'Created At']);
+            fputcsv($handle, ['ID', 'Name', 'Card ID', 'Gender', 'Date of Birth', 'Nationality', 'Relationship', 'Phone', 'Disabled', 'Guardian', 'Camp', 'Created At']);
 
             foreach ($members as $member) {
                 fputcsv($handle, [
                     $member->id,
                     $member->name,
-                    $member->relationship ?? '',
+                    $member->card_id ?? '',
+                    $member->gender ?? '',
                     $member->date_of_birth?->format('Y-m-d') ?? '',
+                    $member->nationality ?? '',
+                    $member->relationship ?? '',
+                    $member->phone_number ?? '',
+                    $member->is_disabled ? 'Yes' : 'No',
                     $member->guardian?->full_name ?? 'N/A',
                     $member->guardian?->camp?->name ?? 'N/A',
                     $member->created_at?->toDateTimeString() ?? '',
