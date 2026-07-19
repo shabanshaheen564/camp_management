@@ -152,11 +152,13 @@ public function update(Request $request, Camp $camp)
 
         $file = $request->file('file');
         $path = $file->getRealPath();
+        $extension = strtolower($file->getClientOriginalExtension());
+        $storedPath = $file->store('imports');
 
         $rows = [];
         $headers = [];
 
-        if ($file->getClientOriginalExtension() === 'csv') {
+        if ($extension === 'csv') {
             $handle = fopen($path, 'r');
             if ($handle !== false) {
                 $headers = fgetcsv($handle, 0, ',');
@@ -188,9 +190,7 @@ public function update(Request $request, Camp $camp)
             'is_active' => 'نشط',
         ];
 
-$storedPath = $file->store('imports');
-session(['import_file' => $storedPath, 'import_extension' => $file->getClientOriginalExtension()]);
-        return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields'));
+        return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields', 'storedPath', 'extension'));
     }
 
     /**

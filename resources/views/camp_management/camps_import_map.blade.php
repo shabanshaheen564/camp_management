@@ -17,8 +17,8 @@
     <div class="card-body">
         <form method="POST" action="{{ route('camps.import') }}">
             @csrf
-              <input type="hidden" name="import_file" value="{{ session('import_file') }}">
-    <input type="hidden" name="import_extension" value="{{ session('import_extension') }}">
+            <input type="hidden" name="import_file" value="{{ $storedPath ?? '' }}">
+            <input type="hidden" name="import_extension" value="{{ $extension ?? 'xlsx' }}">
 
             <div class="table-responsive">
                 <table class="table table-bordered">
