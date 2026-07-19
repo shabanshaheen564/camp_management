@@ -141,9 +141,14 @@ public function update(Request $request, Camp $camp)
      */
     public function importPreview(Request $request)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-        ]);
+       $request->validate([
+    'file' => ['required', 'file', 'max:10240', function ($attribute, $value, $fail) {
+        $ext = strtolower($value->getClientOriginalExtension());
+        if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
+            $fail('يجب أن يكون الملف من نوع: xlsx, xls, csv');
+        }
+    }],
+]);
 
         $file = $request->file('file');
         $path = $file->getRealPath();
