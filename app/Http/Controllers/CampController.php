@@ -201,9 +201,8 @@ session(['import_file' => $storedPath, 'import_extension' => $file->getClientOri
         $request->validate([
             'mapping' => 'required|array',
         ]);
-
-      $path = session('import_file');
-$extension = session('import_extension', 'xlsx');
+$path = $request->input('import_file');
+$extension = $request->input('import_extension', 'xlsx');
 
 $fullPath = $path ? storage_path('app/' . $path) : null;
 
@@ -291,7 +290,7 @@ if (!$fullPath || !file_exists($fullPath)) {
     Storage::delete($path);
 }
 
-        session()->forget(['import_file', 'import_extension']);
+        
 
         return redirect()->route('camps.index')->with('success', 
             "تم الاستيراد بنجاح: {$results['created']} جديد، {$results['updated']} محدث."

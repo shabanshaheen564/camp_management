@@ -130,18 +130,23 @@ class ReportController extends Controller
             // UTF-8 BOM for Excel compatibility
             fputs($handle, "\xEF\xBB\xBF");
             // Header row
-            fputcsv($handle, ['ID', 'Name', 'Location', 'Active', 'Guardians Count', 'Created At']);
-
-            foreach ($camps as $camp) {
-                fputcsv($handle, [
-                    $camp->id,
-                    $camp->name,
-                    $camp->location ?? '',
-                    $camp->is_active ? 'Yes' : 'No',
-                    $camp->guardians_count,
-                    $camp->created_at?->toDateTimeString() ?? '',
-                ]);
-            }
+fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 'Phone', 'Capacity', 'Status', 'Active', 'Guardians Count', 'Created At']);
+           foreach ($camps as $camp) {
+    fputcsv($handle, [
+        $camp->id,
+        $camp->name,
+        $camp->location ?? '',
+        $camp->latitude ?? '',
+        $camp->longitude ?? '',
+        $camp->manager ?? '',
+        $camp->phone ?? '',
+        $camp->capacity ?? '',
+        $camp->status ?? '',
+        $camp->is_active ? 'Yes' : 'No',
+        $camp->guardians_count,
+        $camp->created_at?->toDateTimeString() ?? '',
+    ]);
+}
 
             fclose($handle);
         };

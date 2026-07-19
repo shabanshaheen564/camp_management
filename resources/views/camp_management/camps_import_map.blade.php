@@ -17,6 +17,8 @@
     <div class="card-body">
         <form method="POST" action="{{ route('camps.import') }}">
             @csrf
+              <input type="hidden" name="import_file" value="{{ session('import_file') }}">
+    <input type="hidden" name="import_extension" value="{{ session('import_extension') }}">
 
             <div class="table-responsive">
                 <table class="table table-bordered">
