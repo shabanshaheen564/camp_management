@@ -48,10 +48,34 @@
             <h4 style="font-weight:800; margin:0; color:#1e293b;">المخيمات</h4>
             <p style="color:#64748b; font-size:0.85rem; margin:0;">إجمالي: {{ $camps->total() }} مخيم</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#campModal" onclick="openAddModal()">
-            <i class="fas fa-plus me-2"></i> إضافة مخيم
-        </button>
+        <div class="d-flex gap-2">
+            <a href="{{ route('camps.import.form') }}" class="btn btn-outline-primary">
+                <i class="fas fa-file-import me-2"></i>استيراد من Excel
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#campModal" onclick="openAddModal()">
+                <i class="fas fa-plus me-2"></i> إضافة مخيم
+            </button>
+        </div>
     </div>
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('import_errors') && count(session('import_errors')) > 0)
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i> <strong>تنبيه:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach(session('import_errors') as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
     {{-- بطاقات إحصاء سريعة --}}
     <div class="row g-3 mb-4">
