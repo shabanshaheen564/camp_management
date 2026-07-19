@@ -6,6 +6,7 @@ use App\Models\Camp;
 use App\Models\User;
 use Illuminate\Http\Request;
 use SimpleXLSX;
+use Illuminate\Support\Facades\Storage;
 
 class CampController extends Controller
 {
@@ -182,8 +183,8 @@ public function update(Request $request, Camp $camp)
             'is_active' => 'نشط',
         ];
 
-        session(['import_file' => $path, 'import_extension' => $file->getClientOriginalExtension()]);
-
+$storedPath = $file->store('imports');
+session(['import_file' => $storedPath, 'import_extension' => $file->getClientOriginalExtension()]);
         return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields'));
     }
 
@@ -196,12 +197,16 @@ public function update(Request $request, Camp $camp)
             'mapping' => 'required|array',
         ]);
 
-        $path = session('import_file');
-        $extension = session('import_extension', 'xlsx');
+      $path = session('import_file');
+$extension = session('import_extension', 'xlsx');
 
-        if (!$path || !file_exists($path)) {
-            return redirect()->route('camps.import.form')->with('error', 'انتهت صلاحية الملف. يرجى رفعه مرة أخرى.');
-        }
+$fullPath = $path ? storage_path('app/' . $path) : null;
+
+if (!$fullPath || !file_exists($fullPath)) {
+    return redirect()->route('camps.import.form')->with('error', 'انتهت صلاحية الملف. يرجى رفعه مرة أخرى.');
+}
+
+      
 
         $mapping = $request->input('mapping', []);
         $nameColumn = $mapping['name'] ?? null;
@@ -212,7 +217,7 @@ public function update(Request $request, Camp $camp)
 
         $rows = [];
         if ($extension === 'csv') {
-            $handle = fopen($path, 'r');
+            $handle = fopen($fullPath, 'r');
             if ($handle !== false) {
                 $headers = fgetcsv($handle, 0, ',');
                 while (($row = fgetcsv($handle, 0, ',')) !== false) {
@@ -221,7 +226,7 @@ public function update(Request $request, Camp $camp)
                 fclose($handle);
             }
         } else {
-            if ($xlsx = SimpleXLSX::parse($path)) {
+            if ($xlsx = SimpleXLSX::parse($fullPath)) {
                 $headers = $xlsx->headers()[0];
                 foreach ($xlsx->rows() as $row) {
                     $rows[] = array_combine($headers, $row);
@@ -277,6 +282,9 @@ public function update(Request $request, Camp $camp)
                 $results['created']++;
             }
         }
+        if ($path) {
+    Storage::delete($path);
+}
 
         session()->forget(['import_file', 'import_extension']);
 
