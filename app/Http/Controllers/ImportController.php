@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Imports\CampsImport;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
+use SimpleXLSX;
 
 class ImportController extends Controller
 {
