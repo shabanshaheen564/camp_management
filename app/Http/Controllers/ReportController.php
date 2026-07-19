@@ -20,6 +20,9 @@ class ReportController extends Controller
         $totalPersons  = $totalFamilies + $totalMembers;
         $totalAids     = AidDistribution::count();
 
+        // قائمة المخيمات للتصفية
+        $camps = Camp::where('is_active', true)->orderBy('name')->get();
+
         // توزيع النازحين على المخيمات (مخطط دائري)
         $campsData = Camp::where('is_active', true)
             ->withCount('guardians')
@@ -69,7 +72,7 @@ class ReportController extends Controller
 
         return view('camp_management.reports', compact(
             'totalCamps', 'totalFamilies', 'totalPersons', 'totalAids',
-            'campsData', 'monthlyAids', 'monthlyGrowth', 'ageGroups'
+            'campsData', 'monthlyAids', 'monthlyGrowth', 'ageGroups', 'camps'
         ));
     }
 
@@ -102,6 +105,95 @@ class ReportController extends Controller
                     $camp->is_active ? 'Yes' : 'No',
                     $camp->guardians_count,
                     $camp->created_at?->toDateTimeString() ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export families for a specific camp as CSV.
+     */
+    public function exportFamilies(Request $request)
+    {
+        $campId = $request->query('camp_id');
+        
+        $query = Guardian::with('camp');
+        if ($campId) {
+            $query->where('camp_id', $campId);
+        }
+        $families = $query->orderBy('name')->get();
+
+        $campName = $campId ? Camp::find($campId)?->name : 'All';
+        $filename = 'families_' . ($campName ? str_replace(' ', '_', $campName) : 'all') . '_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($families) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['ID', 'Guardian Name', 'Phone', 'Camp', 'Family Members', 'Created At']);
+
+            foreach ($families as $family) {
+                fputcsv($handle, [
+                    $family->id,
+                    $family->name,
+                    $family->phone ?? '',
+                    $family->camp?->name ?? 'N/A',
+                    $family->familyMembers()->count(),
+                    $family->created_at?->toDateTimeString() ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export family members for a specific camp as CSV.
+     */
+    public function exportMembers(Request $request)
+    {
+        $campId = $request->query('camp_id');
+
+        $query = FamilyMember::whereHas('guardian', function ($q) use ($campId) {
+            if ($campId) {
+                $q->where('camp_id', $campId);
+            }
+        })->with('guardian');
+        
+        $members = $query->orderBy('name')->get();
+
+        $campName = $campId ? Camp::find($campId)?->name : 'All';
+        $filename = 'members_' . ($campName ? str_replace(' ', '_', $campName) : 'all') . '_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($members) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['ID', 'Name', 'Relationship', 'Date of Birth', 'Guardian', 'Camp', 'Created At']);
+
+            foreach ($members as $member) {
+                fputcsv($handle, [
+                    $member->id,
+                    $member->name,
+                    $member->relationship ?? '',
+                    $member->date_of_birth?->format('Y-m-d') ?? '',
+                    $member->guardian?->name ?? 'N/A',
+                    $member->guardian?->camp?->name ?? 'N/A',
+                    $member->created_at?->toDateTimeString() ?? '',
                 ]);
             }
 

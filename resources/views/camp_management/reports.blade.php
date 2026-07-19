@@ -5,10 +5,72 @@
 @section('content')
 <div class="page-header">
     <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i>التقارير والإحصائيات</h1>
-    <div class="ms-auto">
-        <a href="{{ route('reports.export.camps') }}" class="btn btn-sm btn-success">
-            <i class="fas fa-file-excel"></i> تصدير إلى Excel
-        </a>
+</div>
+
+{{-- بطاقات التصدير --}}
+<div class="row g-3 mb-4">
+    {{-- تصدير المخيمات --}}
+    <div class="col-xl-4 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #3b82f6">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-campground" style="font-size: 2.5rem; color: #3b82f6;"></i>
+                </div>
+                <h5 class="card-title mb-3">تصدير المخيمات</h5>
+                <p class="text-muted small mb-3">تصدير قائمة جميع المخيمات إلى ملف Excel</p>
+                <a href="{{ route('reports.export.camps') }}" class="btn btn-primary btn-sm w-100">
+                    <i class="fas fa-download me-2"></i>تصدير جميع المخيمات
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- تصدير العائلات --}}
+    <div class="col-xl-4 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #10b981">
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-users" style="font-size: 2.5rem; color: #10b981;"></i>
+                </div>
+                <h5 class="card-title mb-3 text-center">تصدير العائلات</h5>
+                <p class="text-muted small mb-3 text-center">تصدير العائلات من مخيم محدد أو الكل</p>
+                <div class="mb-3">
+                    <select id="familiesCampFilter" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                        <option value="">-- جميع المخيمات --</option>
+                        @foreach($camps as $camp)
+                            <option value="{{ $camp->id }}">{{ $camp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <a href="{{ route('reports.export.families') }}" id="exportFamiliesBtn" class="btn btn-success btn-sm w-100">
+                    <i class="fas fa-download me-2"></i>تصدير العائلات
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- تصدير الأفراد --}}
+    <div class="col-xl-4 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #f59e0b">
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-person" style="font-size: 2.5rem; color: #f59e0b;"></i>
+                </div>
+                <h5 class="card-title mb-3 text-center">تصدير الأفراد</h5>
+                <p class="text-muted small mb-3 text-center">تصدير أفراد من مخيم محدد أو الكل</p>
+                <div class="mb-3">
+                    <select id="membersCampFilter" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                        <option value="">-- جميع المخيمات --</option>
+                        @foreach($camps as $camp)
+                            <option value="{{ $camp->id }}">{{ $camp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <a href="{{ route('reports.export.members') }}" id="exportMembersBtn" class="btn btn-warning btn-sm w-100">
+                    <i class="fas fa-download me-2"></i>تصدير الأفراد
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -104,6 +166,26 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// تحديث رابط تصدير العائلات عند تغيير المخيم
+document.getElementById('familiesCampFilter')?.addEventListener('change', function() {
+    const campId = this.value;
+    const url = new URL("{{ route('reports.export.families') }}", window.location.origin);
+    if (campId) {
+        url.searchParams.set('camp_id', campId);
+    }
+    document.getElementById('exportFamiliesBtn').href = url.toString();
+});
+
+// تحديث رابط تصدير الأفراد عند تغيير المخيم
+document.getElementById('membersCampFilter')?.addEventListener('change', function() {
+    const campId = this.value;
+    const url = new URL("{{ route('reports.export.members') }}", window.location.origin);
+    if (campId) {
+        url.searchParams.set('camp_id', campId);
+    }
+    document.getElementById('exportMembersBtn').href = url.toString();
+});
+
 Chart.defaults.font.family = "'Cairo', sans-serif";
 Chart.defaults.color = '#64748b';
 
