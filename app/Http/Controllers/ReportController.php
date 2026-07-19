@@ -125,7 +125,7 @@ class ReportController extends Controller
         if ($campId) {
             $query->where('camp_id', $campId);
         }
-        $families = $query->orderBy('name')->get();
+        $families = $query->orderBy('first_name')->get();
 
         $campName = $campId ? Camp::find($campId)?->name : 'All';
         $filename = 'families_' . ($campName ? str_replace(' ', '_', $campName) : 'all') . '_' . now()->format('Ymd_His') . '.csv';
@@ -143,7 +143,7 @@ class ReportController extends Controller
             foreach ($families as $family) {
                 fputcsv($handle, [
                     $family->id,
-                    $family->name,
+                    $family->full_name,
                     $family->phone ?? '',
                     $family->camp?->name ?? 'N/A',
                     $family->familyMembers()->count(),
@@ -191,7 +191,7 @@ class ReportController extends Controller
                     $member->name,
                     $member->relationship ?? '',
                     $member->date_of_birth?->format('Y-m-d') ?? '',
-                    $member->guardian?->name ?? 'N/A',
+                    $member->guardian?->full_name ?? 'N/A',
                     $member->guardian?->camp?->name ?? 'N/A',
                     $member->created_at?->toDateTimeString() ?? '',
                 ]);
