@@ -27,9 +27,9 @@ Route::middleware('auth')->group(function () {
 
     // المخيمات
     Route::resource('camps', CampController::class)->except(['show', 'create', 'edit']);
-    Route::get('/camps/import', [ImportController::class, 'showImportForm'])->name('camps.import.form');
-    Route::post('/camps/import/preview', [ImportController::class, 'preview'])->name('camps.import.preview');
-    Route::post('/camps/import', [ImportController::class, 'import'])->name('camps.import');
+    Route::get('/camps/import', [CampController::class, 'showImportForm'])->name('camps.import.form');
+    Route::post('/camps/import/preview', [CampController::class, 'importPreview'])->name('camps.import.preview');
+    Route::post('/camps/import', [CampController::class, 'importExecute'])->name('camps.import');
 
     // العائلات
     Route::resource('families', FamilyController::class)->except(['show', 'create', 'edit']);
