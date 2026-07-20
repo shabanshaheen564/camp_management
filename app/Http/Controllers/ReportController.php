@@ -230,7 +230,7 @@ fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 
         $callback = function () use ($members) {
             $handle = fopen('php://output', 'w');
             fputs($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['ID', 'Name', 'Card ID', 'Gender', 'Date of Birth', 'Nationality', 'Relationship', 'Phone', 'Disabled', 'Guardian', 'Camp', 'Created At']);
+            fputcsv($handle, ['ID', 'Name', 'Card ID', 'Gender', 'Date of Birth', 'Nationality', 'Relationship', 'Phone', 'Disabled', 'Guardian Card ID', 'Guardian', 'Camp', 'Created At']);
 
             foreach ($members as $member) {
                 fputcsv($handle, [
@@ -243,6 +243,7 @@ fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 
                     $member->relationship ?? '',
                     $member->phone_number ?? '',
                     $member->is_disabled ? 'Yes' : 'No',
+                    $member->guardian?->card_id ?? '',
                     $member->guardian?->full_name ?? 'N/A',
                     $member->guardian?->camp?->name ?? 'N/A',
                     $member->created_at?->toDateTimeString() ?? '',

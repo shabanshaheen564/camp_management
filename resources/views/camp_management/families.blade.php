@@ -11,9 +11,14 @@
             <h4 style="font-weight:800; margin:0; color:#1e293b;">العائلات المسجلة</h4>
             <p style="color:#64748b; font-size:0.85rem; margin:0;">إجمالي: {{ $families->total() }} عائلة</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#familyModal" onclick="openAddModal()">
-            <i class="fas fa-user-plus me-2"></i> تسجيل عائلة
-        </button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importMembersModal">
+                <i class="fas fa-file-import me-2"></i> استيراد أفراد من Excel
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#familyModal" onclick="openAddModal()">
+                <i class="fas fa-user-plus me-2"></i> تسجيل عائلة
+            </button>
+        </div>
     </div>
 
     {{-- إحصاء --}}
@@ -371,6 +376,43 @@
                         </button>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- مودال استيراد الأفراد --}}
+    <div class="modal fade" id="importMembersModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-import me-2" style="color:#f59e0b;"></i>استيراد أفراد من Excel
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="importMembersForm" method="POST" action="{{ route('members.import.preview') }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info d-flex align-items-center" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>
+                                يجب أن يحتوي الملف على عمود <strong>رقم هوية رب الأسرة (Guardian Card ID)</strong> لربط كل فرد بعائلته.
+                                باقي الأعمدة اختيارية ويمكن تعيينها لاحقاً.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">اختر ملف Excel</label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            <div class="form-text">صيغ مدعومة: xlsx, xls, csv - الحد الأقصى: 10MB</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-columns me-1"></i> متابعة لتعيين الأعمدة
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

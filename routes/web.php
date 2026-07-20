@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CampController;
 use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\FamilyMemberController;
 use App\Http\Controllers\AidController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\MapController;
@@ -36,6 +37,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/families/{guardian}/members-list', [FamilyController::class, 'getMembersList'])->name('families.members-list');
     Route::post('/families/{guardian}/members', [FamilyController::class, 'storeMember'])->name('families.store-member');
     Route::delete('/families/members/{member}', [FamilyController::class, 'destroyMember'])->name('families.destroy-member');
+
+    // استيراد الأفراد
+    Route::get('/members/import', [FamilyMemberController::class, 'showImportForm'])->name('members.import.form');
+    Route::post('/members/import/preview', [FamilyMemberController::class, 'importPreview'])->name('members.import.preview');
+    Route::post('/members/import', [FamilyMemberController::class, 'importExecute'])->name('members.import');
 
     // المساعدات
     Route::resource('aid', AidController::class)->except(['show', 'create', 'edit']);
