@@ -204,8 +204,8 @@ public function update(Request $request, Camp $camp)
             'import_headers' => 'required|string',
         ]);
 
-        $rows = json_decode($request->input('import_rows', '[]'), true) ?: [];
-        $headers = json_decode($request->input('import_headers', '[]'), true) ?: [];
+        $rows = json_decode(base64_decode($request->input('import_rows', '')), true) ?: [];
+        $headers = json_decode(base64_decode($request->input('import_headers', '')), true) ?: [];
         $mapping = $request->input('mapping', []);
         $nameColumn = $mapping['name'] ?? null;
 

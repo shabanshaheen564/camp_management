@@ -17,8 +17,8 @@
     <div class="card-body">
         <form method="POST" action="{{ route('camps.import') }}">
             @csrf
-            <input type="hidden" name="import_rows" value="{{ addslashes(json_encode($rows)) }}">
-            <input type="hidden" name="import_headers" value="{{ addslashes(json_encode($headers)) }}">
+            <input type="hidden" name="import_rows" value="{{ base64_encode(json_encode($rows)) }}">
+            <input type="hidden" name="import_headers" value="{{ base64_encode(json_encode($headers)) }}">
 
             <div class="table-responsive">
                 <table class="table table-bordered">
