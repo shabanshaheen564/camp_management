@@ -53,12 +53,12 @@
 {{-- فلاتر البحث --}}
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('aid.index') }}" class="row g-2 align-items-end">
+        <form method="GET" id="aidFilterForm" action="{{ route('aid.index') }}" class="row g-2 align-items-end">
             <div class="col-md-3">
-                <input type="text" name="search" class="form-control" placeholder="بحث..." value="{{ request('search') }}">
+                <input type="text" name="search" id="aidSearchInput" class="form-control" placeholder="بحث..." value="{{ request('search') }}">
             </div>
             <div class="col-md-2">
-                <select name="camp_id" class="form-select">
+                <select name="camp_id" id="aidCampFilter" class="form-select">
                     <option value="">كل المخيمات</option>
                     @foreach($camps as $camp)
                         <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>{{ $camp->name }}</option>
@@ -66,7 +66,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <select name="aid_type_id" class="form-select">
+                <select name="aid_type_id" id="aidTypeFilter" class="form-select">
                     <option value="">كل الأنواع</option>
                     @foreach($aidTypes as $type)
                         <option value="{{ $type->id }}" {{ request('aid_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
@@ -74,7 +74,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <select name="status" class="form-select">
+                <select name="status" id="aidStatusFilter" class="form-select">
                     <option value="">كل الحالات</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>معلق</option>
                     <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>نشط</option>
@@ -319,5 +319,37 @@ document.querySelectorAll('.modal').forEach(modal => {
         if (backdrop) backdrop.remove();
     });
 });
+
+(function() {
+    const form = document.getElementById('aidFilterForm');
+    const searchInput = document.getElementById('aidSearchInput');
+    const campFilter = document.getElementById('aidCampFilter');
+    const typeFilter = document.getElementById('aidTypeFilter');
+    const statusFilter = document.getElementById('aidStatusFilter');
+    let timeout = null;
+
+    function submitForm() {
+        form.submit();
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length === 0 || query.length >= 3) {
+                clearTimeout(timeout);
+                timeout = setTimeout(submitForm, 400);
+            }
+        });
+    }
+
+    [campFilter, typeFilter, statusFilter].forEach(function(el) {
+        if (el) {
+            el.addEventListener('change', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(submitForm, 200);
+            });
+        }
+    });
+})();
 </script>
 @endpush

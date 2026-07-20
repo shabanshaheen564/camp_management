@@ -50,7 +50,7 @@
                                     <select name="mapping[{{ $field }}]" class="form-select">
                                         <option value="">-- لا يوجد --</option>
                                         @foreach($headers as $header)
-                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($loop->first && in_array($field, ['guardian_card_id', 'name']))) ? 'selected' : '' }}>
+                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'name']))) ? 'selected' : '' }}>
                                                 {{ $header }}
                                             </option>
                                         @endforeach

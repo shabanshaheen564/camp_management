@@ -124,9 +124,11 @@ class FamilyMemberController extends Controller
             'is_disabled' => 'ذوي الاحتياجات',
         ];
 
+        $autoMapping = $this->buildAutoMapping($headers, $dbFields);
+
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $cardId = trim((string) ($row[$dbFields['guardian_card_id']] ?? ''));
+            $cardId = trim((string) ($row[$autoMapping['guardian_card_id'] ?? ''] ?? ''));
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
@@ -137,7 +139,58 @@ class FamilyMemberController extends Controller
             ->get()
             ->keyBy('card_id');
 
-        return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields', 'guardians'));
+        return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields', 'guardians', 'autoMapping'));
+    }
+
+    /**
+     * Build automatic column mapping based on keyword similarity.
+     */
+    protected function buildAutoMapping(array $headers, array $dbFields): array
+    {
+        $mapping = [];
+        $keywords = [
+            'guardian_card_id' => ['guardian', 'card', 'id', 'هوية', 'رب الأسرة', 'رقم الهوية', 'parent', 'ولي الأمر'],
+            'name' => ['name', 'الاسم', 'اسم الفرد', 'الاسم الكامل', 'fullname', 'full_name', 'first name', 'الاسم الاول'],
+            'card_id' => ['card', 'بطاقة', 'رقم البطاقة', 'member id', 'member_card', 'كارت'],
+            'gender' => ['gender', 'جنس', 'نوع', 'sex', 'male', 'female', 'ذكر', 'انثى'],
+            'date_of_birth' => ['birth', 'dob', 'الميلاد', 'تاريخ الميلاد', 'date of birth', 'تاريخ'],
+            'nationality' => ['nationality', 'جنسية', 'country', 'دولة'],
+            'relationship' => ['relationship', 'صلة', 'قرابة', 'relation', ' Kinship'],
+            'phone_number' => ['phone', 'هاتف', 'موبايل', 'mobile', 'tel', 'telephone', 'جوال'],
+            'is_disabled' => ['disabled', 'احتياجات', 'disability', 'اعاقة', 'مقعد', 'special'],
+        ];
+
+        foreach ($dbFields as $field => $label) {
+            $bestHeader = '';
+            $bestScore = 0;
+
+            foreach ($headers as $header) {
+                $headerLower = mb_strtolower((string) $header, 'UTF-8');
+                $score = 0;
+
+                foreach ($keywords[$field] as $keyword) {
+                    $keywordLower = mb_strtolower($keyword, 'UTF-8');
+                    if ($headerLower === $keywordLower) {
+                        $score += 10;
+                    } elseif (str_contains($headerLower, $keywordLower)) {
+                        $score += 5;
+                    } elseif (str_contains($keywordLower, $headerLower)) {
+                        $score += 3;
+                    }
+                }
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestHeader = $header;
+                }
+            }
+
+            if ($bestScore >= 5) {
+                $mapping[$field] = $bestHeader;
+            }
+        }
+
+        return $mapping;
     }
 
     /**

@@ -130,8 +130,8 @@
         <div class="card-header">
             <h5 class="card-title"><i class="fas fa-list"></i> قائمة المخيمات</h5>
             {{-- بحث --}}
-            <form method="GET" class="d-flex gap-2" style="min-width:280px;">
-                <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm"
+            <form method="GET" id="campsFilterForm" class="d-flex gap-2" style="min-width:280px;">
+                <input type="text" name="search" id="campsSearchInput" value="{{ request('search') }}" class="form-control form-control-sm"
                     placeholder="ابحث باسم المخيم أو الموقع...">
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fas fa-search"></i>
@@ -470,16 +470,33 @@
     const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
     modal.show();
 }
-// إصلاح مشكلة بقاء الـ backdrop بعد إغلاق المودال
-document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('hidden.bs.modal', function () {
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('overflow');
-        document.body.style.removeProperty('padding-right');
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
-    });
-});
+        // إصلاح مشكلة بقاء الـ backdrop بعد إغلاق المودال
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', function () {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            });
+        });
+
+        // بحث مباشر
+        (function() {
+            const form = document.getElementById('campsFilterForm');
+            const searchInput = document.getElementById('campsSearchInput');
+            let timeout = null;
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    if (query.length === 0 || query.length >= 3) {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => form.submit(), 400);
+                    }
+                });
+            }
+        })();
     </script>
     
 @endpush

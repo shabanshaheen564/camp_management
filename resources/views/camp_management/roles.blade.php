@@ -25,9 +25,9 @@
 {{-- بحث --}}
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('roles.index') }}" class="row g-2 align-items-end">
+        <form method="GET" id="rolesFilterForm" action="{{ route('roles.index') }}" class="row g-2 align-items-end">
             <div class="col-md-6">
-                <input type="text" name="search" class="form-control" placeholder="بحث بالاسم..." value="{{ request('search') }}">
+                <input type="text" name="search" id="rolesSearchInput" class="form-control" placeholder="بحث بالاسم..." value="{{ request('search') }}">
             </div>
             <div class="col-md-1">
                 <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i></button>
@@ -202,5 +202,21 @@ function openDeleteModal(id) {
     document.getElementById('deleteForm').action = `/roles/${id}`;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+(function() {
+    const form = document.getElementById('rolesFilterForm');
+    const searchInput = document.getElementById('rolesSearchInput');
+    let timeout = null;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length === 0 || query.length >= 3) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => form.submit(), 400);
+            }
+        });
+    }
+})();
 </script>
 @endpush

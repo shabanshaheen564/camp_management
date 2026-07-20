@@ -44,12 +44,12 @@
 {{-- بحث وفلتر --}}
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('users.index') }}" class="row g-2 align-items-end">
+        <form method="GET" id="usersFilterForm" action="{{ route('users.index') }}" class="row g-2 align-items-end">
             <div class="col-md-5">
-                <input type="text" name="search" class="form-control" placeholder="بحث بالاسم أو البريد..." value="{{ request('search') }}">
+                <input type="text" name="search" id="usersSearchInput" class="form-control" placeholder="بحث بالاسم أو البريد..." value="{{ request('search') }}">
             </div>
             <div class="col-md-3">
-                <select name="role_id" class="form-select">
+                <select name="role_id" id="usersRoleFilter" class="form-select">
                     <option value="">كل الأدوار</option>
                     @foreach($roles as $role)
                         <option value="{{ $role->id }}" {{ request('role_id') == $role->id ? 'selected' : '' }}>
@@ -265,5 +265,33 @@ function openDeleteModal(id) {
     document.getElementById('deleteForm').action = `/users/${id}`;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+(function() {
+    const form = document.getElementById('usersFilterForm');
+    const searchInput = document.getElementById('usersSearchInput');
+    const roleFilter = document.getElementById('usersRoleFilter');
+    let timeout = null;
+
+    function submitForm() {
+        form.submit();
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length === 0 || query.length >= 3) {
+                clearTimeout(timeout);
+                timeout = setTimeout(submitForm, 400);
+            }
+        });
+    }
+
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(submitForm, 200);
+        });
+    }
+})();
 </script>
 @endpush
