@@ -116,7 +116,7 @@
                 </div>
             @endif
 
-            @if($newGuardianCardIds->isNotEmpty())
+            @if(!empty($newGuardianCardIds))
                 <div class="card mb-4 border-success">
                     <div class="card-header bg-success text-white">
                         <h6 class="mb-0"><i class="fas fa-user-plus me-2"></i>أولياء أمور سيتم إنشاؤهم تلقائيًا</h6>
