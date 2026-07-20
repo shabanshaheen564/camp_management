@@ -20,6 +20,7 @@ class FamilyMember extends Model
         'nationality',
         'phone_number',
         'is_disabled',
+        'marital_status',
     ];
 
     protected $casts = [

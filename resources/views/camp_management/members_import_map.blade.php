@@ -51,7 +51,7 @@
                                     <select name="mapping[{{ $field }}]" class="form-select">
                                         <option value="">-- لا يوجد --</option>
                                         @foreach($headers as $header)
-                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'guardian_name', 'name']))) ? 'selected' : '' }}>
+                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'name']))) ? 'selected' : '' }}>
                                                 {{ $header }}
                                             </option>
                                         @endforeach
@@ -84,6 +84,7 @@
                                         <th>الاسم الكامل</th>
                                         <th>المخيم</th>
                                         <th>الهاتف</th>
+                                        <th>الحالة الاجتماعية</th>
                                         <th>الحالة</th>
                                     </tr>
                                 </thead>
@@ -100,6 +101,13 @@
                                                 @endif
                                             </td>
                                             <td>{{ $guardian->phone ?? '—' }}</td>
+                                            <td>
+                                                @if($guardian->marital_status === 'married')
+                                                    <span class="badge bg-success">متزوج</span>
+                                                @else
+                                                    <span class="badge bg-secondary">غير متزوج</span>
+                                                @endif
+                                            </td>
                                             <td>
                                                 @if($guardian->is_disabled)
                                                     <span class="badge bg-danger">ذوي احتياجات</span>
@@ -128,6 +136,7 @@
                                     <tr>
                                         <th>رقم هوية رب الأسرة</th>
                                         <th>اسم رب الأسرة من الإكسل</th>
+                                        <th>الحالة الاجتماعية</th>
                                         <th>الحالة</th>
                                     </tr>
                                 </thead>
@@ -146,6 +155,23 @@
                                                     }
                                                 @endphp
                                                 {{ $gName ?: 'رب أسرة ' . $cardId }}
+                                            </td>
+                                            <td>
+                                                @php
+                                                    $gMarital = '';
+                                                    foreach ($rows as $r) {
+                                                        if (trim((string)($r[$autoMapping['guardian_card_id'] ?? ''] ?? '')) === $cardId) {
+                                                            $gMarital = trim((string)($r[$autoMapping['guardian_marital_status'] ?? ''] ?? ''));
+                                                            break;
+                                                        }
+                                                    }
+                                                    $gMaritalLower = mb_strtolower($gMarital, 'UTF-8');
+                                                @endphp
+                                                @if(in_array($gMaritalLower, ['married', 'متزوج']))
+                                                    <span class="badge bg-success">متزوج</span>
+                                                @else
+                                                    <span class="badge bg-secondary">غير متزوج</span>
+                                                @endif
                                             </td>
                                             <td><span class="badge bg-success">جديد</span></td>
                                         </tr>

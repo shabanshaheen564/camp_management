@@ -115,6 +115,7 @@
                         <th>رقم الهوية</th>
                         <th>المخيم</th>
                         <th>الهاتف</th>
+                        <th>الحالة الاجتماعية</th>
                         <th>عدد الأفراد</th>
                         <th>تاريخ التسجيل</th>
                         <th>الإجراءات</th>
@@ -154,6 +155,13 @@
                             </td>
                             <td style="font-size:0.85rem; direction:ltr; text-align:right;">
                                 {{ $family->phone ?? '—' }}
+                            </td>
+                            <td style="font-size:0.85rem;">
+                                @if($family->marital_status === 'married')
+                                    <span class="badge bg-success">متزوج</span>
+                                @else
+                                    <span class="badge bg-secondary">غير متزوج</span>
+                                @endif
                             </td>
                             <td>
                                 <span
@@ -250,6 +258,15 @@
                                 <select name="gender" id="ff_gender" class="form-select">
                                     <option value="male">ذكر</option>
                                     <option value="female">أنثى</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">الحالة الاجتماعية</label>
+                                <select name="marital_status" id="ff_marital_status" class="form-select">
+                                    <option value="single">غير متزوج</option>
+                                    <option value="married">متزوج</option>
+                                    <option value="divorced">مطلق</option>
+                                    <option value="widowed">أرمل</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -434,6 +451,7 @@
             });
             document.getElementById('ff_camp').value = '';
             document.getElementById('ff_gender').value = 'male';
+            document.getElementById('ff_marital_status').value = 'single';
             new bootstrap.Modal(document.getElementById('familyModal')).show();
         }
 
@@ -455,6 +473,7 @@
             document.getElementById('ff_dob').value = data.date_of_birth || '';
             document.getElementById('ff_camp').value = data.camp_id || '';
             document.getElementById('ff_gender').value = data.gender || 'male';
+            document.getElementById('ff_marital_status').value = data.marital_status || 'single';
 
             new bootstrap.Modal(document.getElementById('familyModal')).show();
         }
@@ -472,14 +491,16 @@
                     if (members.length === 0) {
                         html = '<div class="text-center py-3" style="color:#94a3b8;">لا يوجد أفراد مسجلون</div>';
                     } else {
-                        html = '<table class="table table-sm"><thead><tr><th>الاسم</th><th>الصلة</th><th>الجنس</th><th>تاريخ الميلاد</th><th></th></tr></thead><tbody>';
+                        html = '<table class="table table-sm"><thead><tr><th>الاسم</th><th>الصلة</th><th>الجنس</th><th>تاريخ الميلاد</th><th>الحالة الاجتماعية</th><th></th></tr></thead><tbody>';
                         members.forEach(m => {
                             const rel = { son: 'ابن', daughter: 'ابنة', spouse: 'زوج/زوجة', father: 'أب', mother: 'أم', other: 'أخرى' };
+                            const maritalStatus = { married: 'متزوج', single: 'غير متزوج', divorced: 'مطلق', widowed: 'أرمل' };
                             html += `<tr>
                             <td style="font-size:0.85rem;">${m.name || m.full_name}</td>
                             <td style="font-size:0.82rem;">${rel[m.relationship] || m.relationship || '—'}</td>
                             <td style="font-size:0.82rem;">${m.gender === 'male' ? 'ذكر' : 'أنثى'}</td>
                             <td style="font-size:0.82rem;">${m.date_of_birth || '—'}</td>
+                            <td style="font-size:0.82rem;">${maritalStatus[m.marital_status] || m.marital_status || '—'}</td>
                             <td>
                                 <form method="POST" action="/families/members/${m.id}" style="display:inline;">
                                     <input type="hidden" name="_token" value="{{ csrf_token() }}">

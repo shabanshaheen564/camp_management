@@ -40,49 +40,51 @@ class FamilyController extends Controller
         ));
     }
 
-   public function store(Request $request)
-{
-    $data = $request->validate([
-        'full_name'     => 'required|string|max:255',
-        'national_id'   => 'nullable|string|max:50',
-        'phone'         => 'nullable|string|max:20',
-        'camp_id'       => 'nullable|exists:camps,id',
-        'gender'        => 'nullable|in:male,female',
-        'date_of_birth' => 'nullable|date',
-    ]);
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'full_name'     => 'required|string|max:255',
+            'national_id'   => 'nullable|string|max:50',
+            'phone'         => 'nullable|string|max:20',
+            'camp_id'       => 'nullable|exists:camps,id',
+            'gender'        => 'nullable|in:male,female',
+            'date_of_birth' => 'nullable|date',
+            'marital_status' => 'nullable|in:single,married,divorced,widowed',
+        ]);
 
     $parts = explode(' ', trim($data['full_name']));
 
    Guardian::create([
-    'camp_id' => $data['camp_id'],
-    'first_name' => $parts[0] ?? '',
-    'second_name' => $parts[1] ?? '',
-    'third_name' => $parts[2] ?? '',
-    'family_name' => $parts[3] ?? '',
-    'phone' => $data['phone'] ?? null,
-    'card_id' => $data['national_id'] ?? null,
-    'gender' => $data['gender'] ?? 'male',
-    'date_of_birth' => $data['date_of_birth'] ?? null,
-    'family_member_number' => 0,
+     'camp_id' => $data['camp_id'],
+     'first_name' => $parts[0] ?? '',
+     'second_name' => $parts[1] ?? '',
+     'third_name' => $parts[2] ?? '',
+     'family_name' => $parts[3] ?? '',
+     'phone' => $data['phone'] ?? null,
+     'card_id' => $data['national_id'] ?? null,
+     'gender' => $data['gender'] ?? 'male',
+     'date_of_birth' => $data['date_of_birth'] ?? null,
+     'family_member_number' => 0,
 
-    'nationality' => 'فلسطيني',
-    'marital_status' => 'single',
-    'is_disabled' => 0
-]);
+     'nationality' => 'فلسطيني',
+     'marital_status' => $data['marital_status'] ?? 'single',
+     'is_disabled' => 0
+ ]);
 
     return back()->with('success', 'تم تسجيل العائلة');
 }
 
-   public function update(Request $request, Guardian $family)
-{
-    $data = $request->validate([
-        'full_name'     => 'required|string|max:255',
-        'national_id'   => 'nullable|string|max:50',
-        'camp_id'       => 'nullable|exists:camps,id',
-        'gender'        => 'nullable|in:male,female',
-        'date_of_birth' => 'nullable|date',
-        'phone'        => 'nullable|string|max:50',
-    ]);
+    public function update(Request $request, Guardian $family)
+    {
+        $data = $request->validate([
+            'full_name'     => 'required|string|max:255',
+            'national_id'   => 'nullable|string|max:50',
+            'camp_id'       => 'nullable|exists:camps,id',
+            'gender'        => 'nullable|in:male,female',
+            'date_of_birth' => 'nullable|date',
+            'phone'        => 'nullable|string|max:50',
+            'marital_status' => 'nullable|in:single,married,divorced,widowed',
+        ]);
 
     $parts = explode(' ', trim($data['full_name']));
 
@@ -96,6 +98,7 @@ class FamilyController extends Controller
         'gender' => $data['gender'] ?? 'male',
         'phone' => $data['phone'] ?? null,
         'date_of_birth' => $data['date_of_birth'],
+        'marital_status' => $data['marital_status'] ?? 'single',
     ]);
 
     return back()->with('success', 'تم التعديل');
@@ -129,6 +132,7 @@ class FamilyController extends Controller
             'date_of_birth' => $data['date_of_birth'],
             'phone_number'  => $data['phone_number'] ?? null,
             'is_disabled'   => isset($data['is_disabled']) ? 1 : 0,
+            'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
         ]);
 
         return back()->with('success', 'تم إضافة الفرد بنجاح.');

@@ -115,6 +115,7 @@ class FamilyMemberController extends Controller
         $dbFields = [
             'guardian_card_id' => 'رقم هوية رب الأسرة',
             'guardian_name' => 'اسم رب الأسرة',
+            'guardian_marital_status' => 'الحالة الاجتماعية لرب الأسرة',
             'name' => 'اسم الفرد',
             'card_id' => 'رقم البطاقة',
             'gender' => 'الجنس',
@@ -135,7 +136,7 @@ class FamilyMemberController extends Controller
             }
         }
 
-        $guardians = Guardian::whereIn('card_id', array_unique($guardianCardIds))
+        $guardians = Guardian::withTrashed()->whereIn('card_id', array_unique($guardianCardIds))
             ->with('camp')
             ->get()
             ->keyBy('card_id');
@@ -154,6 +155,7 @@ class FamilyMemberController extends Controller
         $keywords = [
             'guardian_card_id' => ['guardian', 'card', 'id', 'هوية', 'رب الأسرة', 'رقم الهوية', 'parent', 'ولي الأمر'],
             'guardian_name' => ['guardian name', 'guardian', 'اسم رب الأسرة', 'ولي الأمر', 'parent name', 'اسم ولي الأمر', 'اسم رب العائلة'],
+            'guardian_marital_status' => ['marital', 'حالة اجتماعية', 'متزوج', 'غير متزوج', 'social status', 'marital status'],
             'name' => ['name', 'الاسم', 'اسم الفرد', 'الاسم الكامل', 'fullname', 'full_name', 'first name', 'الاسم الاول'],
             'card_id' => ['card', 'بطاقة', 'رقم البطاقة', 'member id', 'member_card', 'كارت'],
             'gender' => ['gender', 'جنس', 'نوع', 'sex', 'male', 'female', 'ذكر', 'انثى'],
@@ -229,7 +231,7 @@ class FamilyMemberController extends Controller
             }
         }
 
-        $existingGuardians = Guardian::whereIn('card_id', array_unique($guardianCardIds))->get()->keyBy('card_id');
+        $existingGuardians = Guardian::withTrashed()->whereIn('card_id', array_unique($guardianCardIds))->get()->keyBy('card_id');
 
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
 
@@ -267,18 +269,27 @@ class FamilyMemberController extends Controller
                 $guardianName = 'رب أسرة ' . $guardianCardId;
             }
 
+            $guardianMaritalStatus = trim((string) ($row[$mapping['guardian_marital_status'] ?? ''] ?? ''));
+            if ($guardianMaritalStatus === '' || !in_array(strtolower($guardianMaritalStatus), ['married', 'متزوج'])) {
+                $guardianMaritalStatus = 'single';
+            } else {
+                $guardianMaritalStatus = 'married';
+            }
+
+            $defaultCamp = \App\Models\Camp::where('is_active', true)->first();
+
             $guardian = Guardian::create([
+                'camp_id' => $defaultCamp?->id,
                 'card_id' => $guardianCardId,
                 'first_name' => $guardianName,
                 'second_name' => '',
                 'third_name' => '',
                 'family_name' => '',
-                'phone' => null,
+                'date_of_birth' => '1900-01-01',
                 'gender' => 'male',
-                'date_of_birth' => null,
-                'family_member_number' => 0,
+                'marital_status' => $guardianMaritalStatus,
                 'nationality' => 'فلسطيني',
-                'marital_status' => 'single',
+                'family_member_number' => 0,
                 'is_disabled' => 0,
             ]);
 
@@ -289,10 +300,11 @@ class FamilyMemberController extends Controller
         $data = [
             'guardian_id' => $guardian->id,
             'name' => $name,
+            'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
         ];
 
         foreach ($mapping as $dbField => $excelColumn) {
-            if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'name']) || !$excelColumn) continue;
+            if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'name']) || !$excelColumn) continue;
             $rawValue = $row[$excelColumn] ?? '';
             $value = $this->normalizeExcelValue($rawValue, $dbField);
             if ($value === null || $value === '') continue;
