@@ -98,6 +98,11 @@ class FamilyMember extends Model
             $familyMember->guardian->camp->updateOccupancy();
         });
 
+        static::updated(function ($familyMember) {
+            $familyMember->guardian->updateFamilyMemberCount();
+            $familyMember->guardian->camp->updateOccupancy();
+        });
+
         static::deleted(function ($familyMember) {
             $familyMember->guardian->updateFamilyMemberCount();
             $familyMember->guardian->camp->updateOccupancy();

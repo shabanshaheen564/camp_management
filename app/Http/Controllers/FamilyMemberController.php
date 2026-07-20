@@ -7,6 +7,7 @@ use App\Models\FamilyMember;
 use App\Models\Guardian;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use SimpleXLSX;
 
 class FamilyMemberController extends Controller
@@ -154,7 +155,7 @@ class FamilyMemberController extends Controller
         $guardianCardIds = [];
         foreach ($rows as $row) {
             $cardId = trim($row[$guardianCardIdColumn] ?? '');
-            if ($cardId) {
+            if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
         }
@@ -163,75 +164,89 @@ class FamilyMemberController extends Controller
 
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
 
-        foreach ($rows as $index => $row) {
-            $guardianCardId = trim($row[$guardianCardIdColumn] ?? '');
-            $name = trim($row[$nameColumn] ?? '');
+        DB::transaction(function () use ($rows, $mapping, $guardianCardIdColumn, $nameColumn, $existingGuardians, $results) {
+            foreach ($rows as $index => $row) {
+                $guardianCardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
+                $name = trim((string) ($row[$nameColumn] ?? ''));
 
-            if (!$guardianCardId) {
-                $results['errors'][] = "السطر " . ($index + 2) . ": رقم هوية رب الأسرة مفقود";
-                continue;
-            }
-
-            if (!$name) {
-                $results['errors'][] = "السطر " . ($index + 2) . ": اسم الفرد مفقود";
-                continue;
-            }
-
-            $guardian = $existingGuardians->get($guardianCardId);
-
-            if (!$guardian) {
-                $results['errors'][] = "السطر " . ($index + 2) . ": رب الأسرة برقم هوية {$guardianCardId} غير موجود";
-                continue;
-            }
-
-            $data = [
-                'guardian_id' => $guardian->id,
-                'name' => $name,
-            ];
-
-            foreach ($mapping as $dbField => $excelColumn) {
-                if (in_array($dbField, ['guardian_card_id', 'name']) || !$excelColumn) continue;
-                $value = trim($row[$excelColumn] ?? '');
-                if ($value === '') continue;
-
-                switch ($dbField) {
-                    case 'gender':
-                        $data[$dbField] = in_array(strtolower($value), ['male', 'ذكر']) ? 'male' : (in_array(strtolower($value), ['female', 'أنثى']) ? 'female' : null);
-                        break;
-                case 'date_of_birth':
-                    try {
-                        $data[$dbField] = \Carbon\Carbon::createFromFormat('Y-m-d', $value)->format('Y-m-d');
-                    } catch (\Exception $e) {
-                        $data[$dbField] = \Carbon\Carbon::parse($value)->format('Y-m-d');
-                    }
-                    break;
-                    case 'is_disabled':
-                        $data[$dbField] = in_array(strtolower($value), ['1', 'نعم', 'yes', 'true', 'نعم']);
-                        break;
-                    default:
-                        $data[$dbField] = $value;
+                if ($guardianCardId === '') {
+                    $results['errors'][] = "السطر " . ($index + 2) . ": رقم هوية رب الأسرة مفقود";
+                    continue;
                 }
+
+                if ($name === '') {
+                    $results['errors'][] = "السطر " . ($index + 2) . ": اسم الفرد مفقود";
+                    continue;
+                }
+
+                $guardian = $existingGuardians->get($guardianCardId);
+
+                if (!$guardian) {
+                    $results['errors'][] = "السطر " . ($index + 2) . ": رب الأسرة برقم هوية {$guardianCardId} غير موجود";
+                    continue;
+                }
+
+                $data = [
+                    'guardian_id' => $guardian->id,
+                    'name' => $name,
+                ];
+
+                foreach ($mapping as $dbField => $excelColumn) {
+                    if (in_array($dbField, ['guardian_card_id', 'name']) || !$excelColumn) continue;
+                    $value = trim((string) ($row[$excelColumn] ?? ''));
+                    if ($value === '') continue;
+
+                    switch ($dbField) {
+                        case 'gender':
+                            $normalized = mb_strtolower($value, 'UTF-8');
+                            $data[$dbField] = match (true) {
+                                in_array($normalized, ['male', 'ذكر', 'm']) => 'male',
+                                in_array($normalized, ['female', 'أنثى', 'f']) => 'female',
+                                default => null,
+                            };
+                            break;
+                        case 'date_of_birth':
+                            try {
+                                $data[$dbField] = \Carbon\Carbon::createFromFormat('Y-m-d', $value)->format('Y-m-d');
+                            } catch (\Throwable) {
+                                try {
+                                    $data[$dbField] = \Carbon\Carbon::parse($value)->format('Y-m-d');
+                                } catch (\Throwable) {
+                                    $results['errors'][] = "السطر " . ($index + 2) . ": تاريخ ميلاد غير صالح ({$value})";
+                                    continue 2;
+                                }
+                            }
+                            break;
+                        case 'is_disabled':
+                            $normalized = mb_strtolower($value, 'UTF-8');
+                            $data[$dbField] = in_array($normalized, ['1', 'نعم', 'yes', 'true', 'disabled', 'ذوي الاحتياجات']);
+                            break;
+                        case 'phone_number':
+                        case 'card_id':
+                        case 'nationality':
+                        case 'relationship':
+                            $data[$dbField] = $value;
+                            break;
+                        default:
+                            $data[$dbField] = $value;
+                    }
+                }
+
+                $memberCardId = $data['card_id'] ?? null;
+
+                if ($memberCardId !== null && $memberCardId !== '') {
+                    $existingMember = FamilyMember::where('card_id', $memberCardId)->first();
+                    if ($existingMember) {
+                        $existingMember->update($data);
+                        $results['updated']++;
+                        continue;
+                    }
+                }
+
+                FamilyMember::create($data);
+                $results['created']++;
             }
-
-        $existingMember = null;
-        if (!empty($data['card_id'])) {
-            $existingMember = FamilyMember::where('card_id', $data['card_id'])->first();
-        }
-
-        if (!$existingMember) {
-            $existingMember = FamilyMember::where('guardian_id', $guardian->id)
-                ->where('name', $data['name'])
-                ->first();
-        }
-
-        if ($existingMember) {
-            $existingMember->update($data);
-            $results['updated']++;
-        } else {
-            FamilyMember::create($data);
-            $results['created']++;
-        }
-        }
+        });
 
         return redirect()->route('families.index')->with('success',
             "تم الاستيراد بنجاح: {$results['created']} جديد، {$results['updated']} محدث."
