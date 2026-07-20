@@ -7,7 +7,6 @@ use App\Models\FamilyMember;
 use App\Models\Guardian;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use SimpleXLSX;
 
 class FamilyMemberController extends Controller
@@ -164,92 +163,125 @@ class FamilyMemberController extends Controller
 
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
 
-        DB::transaction(function () use ($rows, $mapping, $guardianCardIdColumn, $nameColumn, $existingGuardians, $results) {
-            foreach ($rows as $index => $row) {
-                $guardianCardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
-                $name = trim((string) ($row[$nameColumn] ?? ''));
-
-                if ($guardianCardId === '') {
-                    $results['errors'][] = "السطر " . ($index + 2) . ": رقم هوية رب الأسرة مفقود";
-                    continue;
-                }
-
-                if ($name === '') {
-                    $results['errors'][] = "السطر " . ($index + 2) . ": اسم الفرد مفقود";
-                    continue;
-                }
-
-                $guardian = $existingGuardians->get($guardianCardId);
-
-                if (!$guardian) {
-                    $results['errors'][] = "السطر " . ($index + 2) . ": رب الأسرة برقم هوية {$guardianCardId} غير موجود";
-                    continue;
-                }
-
-                $data = [
-                    'guardian_id' => $guardian->id,
-                    'name' => $name,
-                ];
-
-                foreach ($mapping as $dbField => $excelColumn) {
-                    if (in_array($dbField, ['guardian_card_id', 'name']) || !$excelColumn) continue;
-                    $value = trim((string) ($row[$excelColumn] ?? ''));
-                    if ($value === '') continue;
-
-                    switch ($dbField) {
-                        case 'gender':
-                            $normalized = mb_strtolower($value, 'UTF-8');
-                            $data[$dbField] = match (true) {
-                                in_array($normalized, ['male', 'ذكر', 'm']) => 'male',
-                                in_array($normalized, ['female', 'أنثى', 'f']) => 'female',
-                                default => null,
-                            };
-                            break;
-                        case 'date_of_birth':
-                            try {
-                                $data[$dbField] = \Carbon\Carbon::createFromFormat('Y-m-d', $value)->format('Y-m-d');
-                            } catch (\Throwable) {
-                                try {
-                                    $data[$dbField] = \Carbon\Carbon::parse($value)->format('Y-m-d');
-                                } catch (\Throwable) {
-                                    $results['errors'][] = "السطر " . ($index + 2) . ": تاريخ ميلاد غير صالح ({$value})";
-                                    continue 2;
-                                }
-                            }
-                            break;
-                        case 'is_disabled':
-                            $normalized = mb_strtolower($value, 'UTF-8');
-                            $data[$dbField] = in_array($normalized, ['1', 'نعم', 'yes', 'true', 'disabled', 'ذوي الاحتياجات']);
-                            break;
-                        case 'phone_number':
-                        case 'card_id':
-                        case 'nationality':
-                        case 'relationship':
-                            $data[$dbField] = $value;
-                            break;
-                        default:
-                            $data[$dbField] = $value;
-                    }
-                }
-
-                $memberCardId = $data['card_id'] ?? null;
-
-                if ($memberCardId !== null && $memberCardId !== '') {
-                    $existingMember = FamilyMember::where('card_id', $memberCardId)->first();
-                    if ($existingMember) {
-                        $existingMember->update($data);
-                        $results['updated']++;
-                        continue;
-                    }
-                }
-
-                FamilyMember::create($data);
-                $results['created']++;
+        foreach ($rows as $index => $row) {
+            try {
+                $this->processMemberRow($row, $mapping, $guardianCardIdColumn, $nameColumn, $existingGuardians, $results);
+            } catch (\Throwable $e) {
+                $results['errors'][] = "السطر " . ($index + 2) . ": " . $e->getMessage();
             }
-        });
+        }
 
         return redirect()->route('families.index')->with('success',
             "تم الاستيراد بنجاح: {$results['created']} جديد، {$results['updated']} محدث."
         )->with('import_errors', $results['errors']);
+    }
+
+    protected function processMemberRow(array $row, array $mapping, ?string $guardianCardIdColumn, ?string $nameColumn, $existingGuardians, array &$results): void
+    {
+        $guardianCardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
+        $name = trim((string) ($row[$nameColumn] ?? ''));
+
+        if ($guardianCardId === '') {
+            throw new \InvalidArgumentException('رقم هوية رب الأسرة مفقود');
+        }
+
+        if ($name === '') {
+            throw new \InvalidArgumentException('اسم الفرد مفقود');
+        }
+
+        $guardian = $existingGuardians->get($guardianCardId);
+
+        if (!$guardian) {
+            throw new \InvalidArgumentException("رب الأسرة برقم هوية {$guardianCardId} غير موجود");
+        }
+
+        $data = [
+            'guardian_id' => $guardian->id,
+            'name' => $name,
+        ];
+
+        foreach ($mapping as $dbField => $excelColumn) {
+            if (in_array($dbField, ['guardian_card_id', 'name']) || !$excelColumn) continue;
+            $rawValue = $row[$excelColumn] ?? '';
+            $value = $this->normalizeExcelValue($rawValue, $dbField);
+            if ($value === null || $value === '') continue;
+
+            $data[$dbField] = $value;
+        }
+
+        $memberCardId = $data['card_id'] ?? null;
+
+        if ($memberCardId !== null && $memberCardId !== '') {
+            $existingMember = FamilyMember::where('card_id', $memberCardId)->first();
+            if ($existingMember) {
+                $existingMember->update($data);
+                $results['updated']++;
+                return;
+            }
+        }
+
+        FamilyMember::create($data);
+        $results['created']++;
+    }
+
+    protected function normalizeExcelValue(mixed $value, string $dbField): mixed
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_float($value)) {
+            $value = rtrim(rtrim(number_format($value, 0, '', ''), '0'), '.');
+            if ($value === '') {
+                $value = '0';
+            }
+        } elseif (is_int($value)) {
+            $value = (string) $value;
+        } elseif (is_string($value)) {
+            $value = trim($value);
+        }
+
+        return match ($dbField) {
+            'gender' => $this->normalizeGender($value),
+            'date_of_birth' => $this->normalizeDate($value),
+            'is_disabled' => $this->normalizeDisabled($value),
+            default => (string) $value,
+        };
+    }
+
+    protected function normalizeGender(string $value): ?string
+    {
+        $normalized = mb_strtolower($value, 'UTF-8');
+        return match (true) {
+            in_array($normalized, ['male', 'ذكر', 'm']) => 'male',
+            in_array($normalized, ['female', 'أنثى', 'f']) => 'female',
+            default => null,
+        };
+    }
+
+    protected function normalizeDate(string $value): ?string
+    {
+        if ($value === '') return null;
+
+        $formats = ['Y-m-d', 'd/m/Y', 'm/d/Y', 'd-m-Y', 'm-d-Y', 'Y/m/d'];
+        foreach ($formats as $format) {
+            try {
+                return \Carbon\Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    protected function normalizeDisabled(string $value): bool
+    {
+        $normalized = mb_strtolower($value, 'UTF-8');
+        return in_array($normalized, ['1', 'نعم', 'yes', 'true', 'disabled', 'ذوي الاحتياجات']);
     }
 }

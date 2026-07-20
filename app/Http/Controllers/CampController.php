@@ -216,54 +216,77 @@ public function update(Request $request, Camp $camp)
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
 
         foreach ($rows as $index => $row) {
-            $name = trim($row[$nameColumn] ?? '');
-            if (!$name) {
-                $results['errors'][] = "السطر " . ($index + 2) . ": اسم المخيم مفقود";
-                continue;
+            try {
+                $this->processCampRow($row, $mapping, $nameColumn, $results);
+            } catch (\Throwable $e) {
+                $results['errors'][] = "السطر " . ($index + 2) . ": " . $e->getMessage();
             }
+        }
 
-            $data = ['name' => $name];
-
-            foreach ($mapping as $dbField => $excelColumn) {
-                if ($dbField === 'name' || !$excelColumn) continue;
-                $value = trim($row[$excelColumn] ?? '');
-                if ($value === '') continue;
-
-                switch ($dbField) {
-                    case 'capacity':
-                    case 'current_occupancy':
-                        $data[$dbField] = (int) $value;
-                        break;
-                    case 'latitude':
-                    case 'longitude':
-                        $data[$dbField] = (float) $value;
-                        break;
-                    case 'is_active':
-                        $data[$dbField] = in_array(strtolower($value), ['1', 'نعم', 'yes', 'true', 'active']);
-                        break;
-                    case 'status':
-                        $data[$dbField] = in_array(strtolower($value), ['inactive', 'full']) ? strtolower($value) : 'active';
-                        break;
-                    default:
-                        $data[$dbField] = $value;
-                }
-            }
-
-            $admin = User::where('email', 'admin@camp.org')->first();
-            $data['created_by'] = $admin?->id;
-
-            $camp = Camp::where('name', $name)->first();
-            if ($camp) {
-                $camp->update($data);
-                $results['updated']++;
-            } else {
-                Camp::create($data);
-                $results['created']++;
-            }
+        if ($path) {
+            Storage::delete($path);
         }
 
         return redirect()->route('camps.index')->with('success',
             "تم الاستيراد بنجاح: {$results['created']} جديد، {$results['updated']} محدث."
         )->with('import_errors', $results['errors']);
+    }
+
+    protected function processCampRow(array $row, array $mapping, ?string $nameColumn, array &$results): void
+    {
+        $name = trim((string) ($row[$nameColumn] ?? ''));
+
+        if ($name === '') {
+            throw new \InvalidArgumentException('اسم المخيم مفقود');
+        }
+
+        $data = ['name' => $name];
+
+        foreach ($mapping as $dbField => $excelColumn) {
+            if ($dbField === 'name' || !$excelColumn) continue;
+            $rawValue = $row[$excelColumn] ?? '';
+            $value = $this->normalizeExcelValue($rawValue, $dbField);
+            if ($value === null || $value === '') continue;
+
+            $data[$dbField] = $value;
+        }
+
+        $admin = User::where('email', 'admin@camp.org')->first();
+        $data['created_by'] = $admin?->id;
+
+        $camp = Camp::where('name', $name)->first();
+        if ($camp) {
+            $camp->update($data);
+            $results['updated']++;
+        } else {
+            Camp::create($data);
+            $results['created']++;
+        }
+    }
+
+    protected function normalizeExcelValue(mixed $value, string $dbField): mixed
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_float($value)) {
+            $value = rtrim(rtrim(number_format($value, 0, '', ''), '0'), '.');
+            if ($value === '') {
+                $value = '0';
+            }
+        } elseif (is_int($value)) {
+            $value = (string) $value;
+        } elseif (is_string($value)) {
+            $value = trim($value);
+        }
+
+        return match ($dbField) {
+            'capacity', 'current_occupancy' => (int) $value,
+            'latitude', 'longitude' => (float) $value,
+            'is_active' => in_array(mb_strtolower($value, 'UTF-8'), ['1', 'نعم', 'yes', 'true', 'active']),
+            'status' => in_array(mb_strtolower($value, 'UTF-8'), ['inactive', 'full']) ? mb_strtolower($value, 'UTF-8') : 'active',
+            default => (string) $value,
+        };
     }
 }
