@@ -114,6 +114,7 @@ class FamilyMemberController extends Controller
 
         $dbFields = [
             'guardian_card_id' => 'رقم هوية رب الأسرة',
+            'guardian_name' => 'اسم رب الأسرة',
             'name' => 'اسم الفرد',
             'card_id' => 'رقم البطاقة',
             'gender' => 'الجنس',
@@ -139,7 +140,9 @@ class FamilyMemberController extends Controller
             ->get()
             ->keyBy('card_id');
 
-        return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields', 'guardians', 'autoMapping'));
+        $newGuardianCardIds = array_diff(array_unique($guardianCardIds), $guardians->keys()->all());
+
+        return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields', 'guardians', 'autoMapping', 'newGuardianCardIds'));
     }
 
     /**
@@ -150,6 +153,7 @@ class FamilyMemberController extends Controller
         $mapping = [];
         $keywords = [
             'guardian_card_id' => ['guardian', 'card', 'id', 'هوية', 'رب الأسرة', 'رقم الهوية', 'parent', 'ولي الأمر'],
+            'guardian_name' => ['guardian name', 'guardian', 'اسم رب الأسرة', 'ولي الأمر', 'parent name', 'اسم ولي الأمر', 'اسم رب العائلة'],
             'name' => ['name', 'الاسم', 'اسم الفرد', 'الاسم الكامل', 'fullname', 'full_name', 'first name', 'الاسم الاول'],
             'card_id' => ['card', 'بطاقة', 'رقم البطاقة', 'member id', 'member_card', 'كارت'],
             'gender' => ['gender', 'جنس', 'نوع', 'sex', 'male', 'female', 'ذكر', 'انثى'],
@@ -258,7 +262,28 @@ class FamilyMemberController extends Controller
         $guardian = $existingGuardians->get($guardianCardId);
 
         if (!$guardian) {
-            throw new \InvalidArgumentException("رب الأسرة برقم هوية {$guardianCardId} غير موجود");
+            $guardianName = trim((string) ($row[$mapping['guardian_name'] ?? ''] ?? ''));
+            if ($guardianName === '') {
+                $guardianName = 'رب أسرة ' . $guardianCardId;
+            }
+
+            $guardian = Guardian::create([
+                'card_id' => $guardianCardId,
+                'first_name' => $guardianName,
+                'second_name' => '',
+                'third_name' => '',
+                'family_name' => '',
+                'phone' => null,
+                'gender' => 'male',
+                'date_of_birth' => null,
+                'family_member_number' => 0,
+                'nationality' => 'فلسطيني',
+                'marital_status' => 'single',
+                'is_disabled' => 0,
+            ]);
+
+            $existingGuardians->put($guardianCardId, $guardian);
+            $results['created']++;
         }
 
         $data = [
@@ -267,7 +292,7 @@ class FamilyMemberController extends Controller
         ];
 
         foreach ($mapping as $dbField => $excelColumn) {
-            if (in_array($dbField, ['guardian_card_id', 'name']) || !$excelColumn) continue;
+            if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'name']) || !$excelColumn) continue;
             $rawValue = $row[$excelColumn] ?? '';
             $value = $this->normalizeExcelValue($rawValue, $dbField);
             if ($value === null || $value === '') continue;

@@ -24,8 +24,9 @@
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <div>
                     حقل <strong>رقم هوية رب الأسرة (Guardian Card ID)</strong> مطلوب لربط الفرد بعائلته.
-                    إذا لم يتم تعيينه، لن يتم استيراد السطر.
+                    إذا لم يتم العثور على رب الأسرة، سيتم إنشاء عائلة جديدة تلقائيًا.
                 </div>
+            </div>
             </div>
 
             <div class="table-responsive">
@@ -50,7 +51,7 @@
                                     <select name="mapping[{{ $field }}]" class="form-select">
                                         <option value="">-- لا يوجد --</option>
                                         @foreach($headers as $header)
-                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'name']))) ? 'selected' : '' }}>
+                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'guardian_name', 'name']))) ? 'selected' : '' }}>
                                                 {{ $header }}
                                             </option>
                                         @endforeach
@@ -106,6 +107,47 @@
                                                     <span class="badge bg-success">نشط</span>
                                                 @endif
                                             </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if($newGuardianCardIds->isNotEmpty())
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="fas fa-user-plus me-2"></i>أولياء أمور سيتم إنشاؤهم تلقائيًا</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>رقم هوية رب الأسرة</th>
+                                        <th>اسم رب الأسرة من الإكسل</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($newGuardianCardIds as $cardId)
+                                        <tr>
+                                            <td style="font-family:monospace;">{{ $cardId }}</td>
+                                            <td>
+                                                @php
+                                                    $gName = '';
+                                                    foreach ($rows as $r) {
+                                                        if (trim((string)($r[$autoMapping['guardian_card_id'] ?? ''] ?? '')) === $cardId) {
+                                                            $gName = trim((string)($r[$autoMapping['guardian_name'] ?? ''] ?? ''));
+                                                            break;
+                                                        }
+                                                    }
+                                                @endphp
+                                                {{ $gName ?: 'رب أسرة ' . $cardId }}
+                                            </td>
+                                            <td><span class="badge bg-success">جديد</span></td>
                                         </tr>
                                     @endforeach
                                 </tbody>
