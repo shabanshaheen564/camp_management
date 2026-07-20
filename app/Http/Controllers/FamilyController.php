@@ -16,8 +16,11 @@ class FamilyController extends Controller
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function ($q) use ($s) {
-                $q->where('full_name', 'like', "%{$s}%")
-                  ->orWhere('national_id', 'like', "%{$s}%")
+                $q->where('first_name', 'like', "%{$s}%")
+                  ->orWhere('second_name', 'like', "%{$s}%")
+                  ->orWhere('third_name', 'like', "%{$s}%")
+                  ->orWhere('family_name', 'like', "%{$s}%")
+                  ->orWhere('card_id', 'like', "%{$s}%")
                   ->orWhere('phone', 'like', "%{$s}%");
             });
         }

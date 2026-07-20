@@ -72,13 +72,13 @@
     {{-- فلتر --}}
     <div class="card mb-3">
         <div class="card-body py-3">
-            <form method="GET" class="row g-2 align-items-end">
+            <form method="GET" id="familiesFilterForm" class="row g-2 align-items-end">
                 <div class="col-md-4">
-                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm"
+                    <input type="text" name="search" id="familiesSearchInput" value="{{ request('search') }}" class="form-control form-control-sm"
                         placeholder="ابحث بالاسم أو رقم الهوية...">
                 </div>
                 <div class="col-md-3">
-                    <select name="camp_id" class="form-select form-select-sm">
+                    <select name="camp_id" id="familiesCampFilter" class="form-select form-select-sm">
                         <option value="">كل المخيمات</option>
                         @foreach($camps as $camp)
                             <option value="{{ $camp->id }}" {{ request('camp_id') == $camp->id ? 'selected' : '' }}>
@@ -88,11 +88,11 @@
                     </select>
                 </div>
                 <div class="col-md-auto">
-                    <button type="submit" class="btn btn-sm btn-primary">
+                    <button type="submit" class="btn btn-sm btn-primary" id="familiesSearchBtn">
                         <i class="fas fa-search me-1"></i> بحث
                     </button>
                     @if(request()->hasAny(['search', 'camp_id']))
-                        <a href="{{ route('families.index') }}" class="btn btn-sm btn-outline-secondary ms-1">
+                        <a href="{{ route('families.index') }}" class="btn btn-sm btn-outline-secondary ms-1" id="familiesClearBtn">
                             <i class="fas fa-times"></i>
                         </a>
                     @endif
@@ -516,5 +516,42 @@
                 if (backdrop) backdrop.remove();
             });
         });
+
+        // بحث مباشر بدون ضغط الزر
+        (function() {
+            const form = document.getElementById('familiesFilterForm');
+            const searchInput = document.getElementById('familiesSearchInput');
+            const campFilter = document.getElementById('familiesCampFilter');
+            const searchBtn = document.getElementById('familiesSearchBtn');
+            let timeout = null;
+
+            function submitForm() {
+                form.submit();
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    if (query.length === 0 || query.length >= 3) {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(submitForm, 400);
+                    }
+                });
+            }
+
+            if (campFilter) {
+                campFilter.addEventListener('change', function() {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(submitForm, 200);
+                });
+            }
+
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function(e) {
+                    clearTimeout(timeout);
+                    form.submit();
+                });
+            }
+        })();
     </script>
 @endpush

@@ -124,7 +124,20 @@ class FamilyMemberController extends Controller
             'is_disabled' => 'ذوي الاحتياجات',
         ];
 
-        return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields'));
+        $guardianCardIds = [];
+        foreach ($rows as $row) {
+            $cardId = trim((string) ($row[$dbFields['guardian_card_id']] ?? ''));
+            if ($cardId !== '') {
+                $guardianCardIds[] = $cardId;
+            }
+        }
+
+        $guardians = Guardian::whereIn('card_id', array_unique($guardianCardIds))
+            ->with('camp')
+            ->get()
+            ->keyBy('card_id');
+
+        return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields', 'guardians'));
     }
 
     /**

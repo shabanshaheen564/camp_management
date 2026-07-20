@@ -69,6 +69,52 @@
                 </table>
             </div>
 
+            @if($guardians->isNotEmpty())
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>أولياء الأمور المكتشفين في الملف</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>رقم هوية رب الأسرة</th>
+                                        <th>الاسم الكامل</th>
+                                        <th>المخيم</th>
+                                        <th>الهاتف</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($guardians as $guardian)
+                                        <tr>
+                                            <td style="font-family:monospace;">{{ $guardian->card_id }}</td>
+                                            <td>{{ $guardian->full_name }}</td>
+                                            <td>
+                                                @if($guardian->camp)
+                                                    <span class="badge bg-primary">{{ $guardian->camp->name }}</span>
+                                                @else
+                                                    <span class="text-muted">غير محدد</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $guardian->phone ?? '—' }}</td>
+                                            <td>
+                                                @if($guardian->is_disabled)
+                                                    <span class="badge bg-danger">ذوي احتياجات</span>
+                                                @else
+                                                    <span class="badge bg-success">نشط</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{{ route('families.index') }}" class="btn btn-secondary">إلغاء</a>
                 <button type="submit" class="btn btn-warning">
