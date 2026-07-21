@@ -74,6 +74,21 @@
             </div>
         </div>
     </div>
+
+    <div class="col-md-3 col-sm-6">
+        <a href="{{ route('notifications.index') }}" class="text-decoration-none">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(239,68,68,0.1);">
+                    <i class="fas fa-bell" style="color:#ef4444;"></i>
+                </div>
+                <div>
+                    <div class="stat-value" style="color:#ef4444;" id="dashboardNotifCount">0</div>
+                    <div class="stat-label">تنبيهات وتعديلات جديدة</div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">اضغط لعرض كل الإشعارات</div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 {{-- المحتوى الرئيسي --}}

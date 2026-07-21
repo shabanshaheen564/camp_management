@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Guardian;
 use App\Models\FamilyMember;
 use App\Models\Camp;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Notifications\FamilyCreatedNotification;
+use App\Notifications\FamilyUpdatedNotification;
+use App\Notifications\FamilyMemberAddedNotification;
 
 class FamilyController extends Controller
 {
@@ -111,6 +114,11 @@ class FamilyController extends Controller
         'marital_status' => $data['marital_status'] ?? 'single',
     ]);
 
+    $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+    foreach ($admins as $admin) {
+        $admin->notify(new FamilyUpdatedNotification($family->full_name ?? $family->first_name, $family->camp?->name, $family->card_id));
+    }
+
     return back()->with('success', 'تم التعديل');
 }
 
@@ -144,6 +152,11 @@ class FamilyController extends Controller
             'is_disabled'   => isset($data['is_disabled']) ? 1 : 0,
             'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
         ]);
+
+        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new FamilyMemberAddedNotification($data['full_name'], $guardian->full_name ?? $guardian->first_name, $guardian->camp?->name));
+        }
 
         return back()->with('success', 'تم إضافة الفرد بنجاح.');
     }

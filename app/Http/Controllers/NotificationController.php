@@ -18,20 +18,24 @@ class NotificationController extends Controller
             ->unreadNotifications()
             ->count();
 
-        return response()->json([
-            'notifications' => $notifications->map(function ($n) {
-                return [
-                    'id' => $n->id,
-                    'title' => $n->data['title'] ?? 'إشعار',
-                    'message' => $n->data['message'] ?? '',
-                    'icon' => $n->data['icon'] ?? 'fa-bell',
-                    'url' => $n->data['url'] ?? '#',
-                    'read_at' => $n->read_at,
-                    'created_at' => $n->created_at,
-                ];
-            }),
-            'unread_count' => $unreadCount,
-        ]);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'notifications' => $notifications->map(function ($n) {
+                    return [
+                        'id' => $n->id,
+                        'title' => $n->data['title'] ?? 'إشعار',
+                        'message' => $n->data['message'] ?? '',
+                        'icon' => $n->data['icon'] ?? 'fa-bell',
+                        'url' => $n->data['url'] ?? '#',
+                        'read_at' => $n->read_at,
+                        'created_at' => $n->created_at,
+                    ];
+                }),
+                'unread_count' => $unreadCount,
+            ]);
+        }
+
+        return view('camp_management.notifications', compact('notifications', 'unreadCount'));
     }
 
     public function markAsRead(Request $request, $id)

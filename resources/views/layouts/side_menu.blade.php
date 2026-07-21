@@ -48,6 +48,12 @@
             الخريطة التفاعلية
         </a>
 
+        <a href="{{ route('notifications.index') }}"
+            class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
+            <span><i class="fas fa-bell"></i> الإشعارات</span>
+            <span id="sidebarNotifBadge" class="badge bg-danger rounded-pill" style="display:none;">0</span>
+        </a>
+
         <div class="nav-section-label">الإدارة</div>
 
         @if(auth()->user()->role?->display_name === 'Administrator')

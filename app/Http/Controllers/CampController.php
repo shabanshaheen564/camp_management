@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use SimpleXLSX;
 use Illuminate\Support\Facades\Storage;
 use App\Notifications\CampCreatedNotification;
+use App\Notifications\CampUpdatedNotification;
 
 class CampController extends Controller
 {
@@ -95,6 +96,11 @@ public function update(Request $request, Camp $camp)
         'is_active'   => $request->is_active,
         'description' => $request->description,
     ]);
+
+    $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+    foreach ($admins as $admin) {
+        $admin->notify(new CampUpdatedNotification($camp->name, $camp->location));
+    }
 
     return redirect()->route('camps.index')->with('success', 'تم تحديث المخيم بنجاح');
 }

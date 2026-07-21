@@ -170,7 +170,7 @@
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitRoleForm()">تحديث البيانات</button>
+                        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitRoleForm()">حفظ بيانات الدور</button>
                         <button type="button" class="btn btn-success" id="savePermissionsBtn" onclick="saveRolePermissions()" style="display:none;">حفظ الصلاحيات</button>
                     </div>
                 </div>
@@ -221,7 +221,7 @@ function openEditModal(id, name, displayName, description) {
     document.getElementById('modalTitle').textContent = 'تعديل الدور';
     document.getElementById('roleForm').action = `/roles/${id}`;
     document.getElementById('methodField').innerHTML = '<input type="hidden" name="_method" value="PUT">';
-    document.getElementById('submitBtn').textContent = 'تحديث البيانات';
+    document.getElementById('submitBtn').textContent = 'حفظ بيانات الدور';
     document.getElementById('f_name').value = name;
     document.getElementById('f_display_name').value = displayName;
     document.getElementById('f_description').value = description;

@@ -140,10 +140,13 @@ class AidDistribution extends Model
     /**
      * Auto-generate allocations for all families in the camp
      */
-    public function generateAllocations()
-    {
-        $guardians = $this->camp->guardians()->with('familyMembers')->get();
-        
+   public function generateAllocations()
+{
+    if (!$this->camp) {
+        return; // لا يوجد مخيم مرتبط بهذه المساعدة، تجاهل توليد التوزيعات
+    }
+
+    $guardians = $this->camp->guardians()->with('familyMembers')->get();
         foreach ($guardians as $guardian) {
             $familySize = 1 + $guardian->familyMembers->count(); // Guardian + family members
             $individualShare = $this->calculateIndividualShare();

@@ -33,25 +33,43 @@
         loadNotifications();
     });
 
+    // تحميل الإشعارات فور فتح أي صفحة، لتحديث العداد في الهيدر والقائمة الجانبية ولوحة التحكم مباشرة
+    document.addEventListener('DOMContentLoaded', function () {
+        loadNotifications();
+        setInterval(loadNotifications, 60000); // تحديث دوري كل دقيقة
+    });
+
     async function loadNotifications() {
         const list = document.getElementById('notificationsList');
         try {
-            const res = await fetch('/notifications');
+            const res = await fetch('/notifications', {
+                headers: { 'Accept': 'application/json' },
+            });
             const data = await res.json();
             updateNotificationBadge(data.unread_count || 0);
-            renderNotifications(data.notifications || []);
+            if (list) renderNotifications(data.notifications || []);
         } catch (err) {
-            list.innerHTML = '<div class="text-center py-3 text-muted">فشل تحميل الإشعارات</div>';
+            if (list) list.innerHTML = '<div class="text-center py-3 text-muted">فشل تحميل الإشعارات</div>';
         }
     }
 
     function updateNotificationBadge(count) {
+        // شارة جرس الإشعارات في الهيدر
         const badge = document.getElementById('notificationBadge');
-        if (count > 0) {
+        if (badge) {
             badge.textContent = count > 99 ? '99+' : count;
-            badge.style.display = 'inline';
-        } else {
-            badge.style.display = 'none';
+            badge.style.display = count > 0 ? 'inline' : 'none';
+        }
+        // شارة الإشعارات في القائمة الجانبية
+        const sidebarBadge = document.getElementById('sidebarNotifBadge');
+        if (sidebarBadge) {
+            sidebarBadge.textContent = count > 99 ? '99+' : count;
+            sidebarBadge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+        // عداد الإشعارات في لوحة التحكم (إن وُجد في الصفحة الحالية)
+        const dashboardCount = document.getElementById('dashboardNotifCount');
+        if (dashboardCount) {
+            dashboardCount.textContent = count;
         }
     }
 

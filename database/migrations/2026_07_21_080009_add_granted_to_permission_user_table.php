@@ -8,15 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('permission_user', function (Blueprint $table) {
-            $table->boolean('granted')->default(true)->after('permission_id');
-        });
+        if (!Schema::hasColumn('permission_user', 'granted')) {
+            Schema::table('permission_user', function (Blueprint $table) {
+                $table->boolean('granted')->default(true)->after('permission_id');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('permission_user', function (Blueprint $table) {
-            $table->dropColumn('granted');
-        });
+        if (Schema::hasColumn('permission_user', 'granted')) {
+            Schema::table('permission_user', function (Blueprint $table) {
+                $table->dropColumn('granted');
+            });
+        }
     }
 };

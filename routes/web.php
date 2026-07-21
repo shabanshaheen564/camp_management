@@ -28,14 +28,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ==================== المخيمات ====================
-    Route::resource('camps', CampController::class)->except(['show', 'create', 'edit']);
+    Route::get('/camps', [CampController::class, 'index'])->middleware('permission:camp.view')->name('camps.index');
+    Route::post('/camps', [CampController::class, 'store'])->middleware('permission:camp.create')->name('camps.store');
+    Route::match(['put', 'patch'], '/camps/{camp}', [CampController::class, 'update'])->middleware('permission:camp.update')->name('camps.update');
+    Route::delete('/camps/{camp}', [CampController::class, 'destroy'])->middleware('permission:camp.delete')->name('camps.destroy');
     Route::patch('/camps/{camp}/toggle', [CampController::class, 'toggleStatus'])->middleware('permission:camp.manage')->name('camps.toggle');
     Route::get('/camps/import', [CampController::class, 'showImportForm'])->middleware('permission:camp.manage')->name('camps.import.form');
     Route::post('/camps/import/preview', [CampController::class, 'importPreview'])->middleware('permission:camp.manage')->name('camps.import.preview');
     Route::post('/camps/import', [CampController::class, 'importExecute'])->middleware('permission:camp.manage')->name('camps.import');
 
     // ==================== العائلات ====================
-    Route::resource('families', FamilyController::class)->except(['show', 'create', 'edit']);
+    Route::get('/families', [FamilyController::class, 'index'])->middleware('permission:guardian.view')->name('families.index');
+    Route::post('/families', [FamilyController::class, 'store'])->middleware('permission:guardian.create')->name('families.store');
+    Route::match(['put', 'patch'], '/families/{family}', [FamilyController::class, 'update'])->middleware('permission:guardian.update')->name('families.update');
+    Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->middleware('permission:guardian.delete')->name('families.destroy');
     Route::get('/families/{guardian}/members-list', [FamilyController::class, 'getMembersList'])->name('families.members-list');
     Route::post('/families/{guardian}/members', [FamilyController::class, 'storeMember'])->middleware('permission:family_member.create')->name('families.store-member');
     Route::delete('/families/members/{member}', [FamilyController::class, 'destroyMember'])->middleware('permission:family_member.delete')->name('families.destroy-member');
@@ -46,7 +52,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/members/import', [FamilyMemberController::class, 'importExecute'])->middleware('permission:import.families')->name('members.import');
 
     // ==================== المساعدات ====================
-    Route::resource('aid', AidController::class)->except(['show', 'create', 'edit']);
+    Route::get('/aid', [AidController::class, 'index'])->middleware('permission:aid.view')->name('aid.index');
+    Route::post('/aid', [AidController::class, 'store'])->middleware('permission:aid.create')->name('aid.store');
+    Route::match(['put', 'patch'], '/aid/{aid}', [AidController::class, 'update'])->middleware('permission:aid.update')->name('aid.update');
+    Route::delete('/aid/{aid}', [AidController::class, 'destroy'])->middleware('permission:aid.delete')->name('aid.destroy');
 
     // ==================== التقارير ====================
     Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:report.view')->name('reports.index');
