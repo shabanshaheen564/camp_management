@@ -105,7 +105,6 @@ class PermissionSeeder extends Seeder
             );
         }
 
-        // Assign permissions to roles
         $this->assignPermissionsToRoles();
     }
 
@@ -113,15 +112,13 @@ class PermissionSeeder extends Seeder
     {
         $adminRole = Role::where('name', 'admin')->first();
         $supervisorRole = Role::where('name', 'supervisor')->first();
+        $managerRole = Role::where('name', 'camp_manager')->first();
 
         if ($adminRole) {
-            // Admin gets all permissions
-            $allPermissions = Permission::all();
-            $adminRole->permissions()->sync($allPermissions->pluck('id'));
+            $adminRole->permissions()->sync(Permission::all()->pluck('id'));
         }
 
         if ($supervisorRole) {
-            // Supervisor gets permissions for their assigned camp
             $supervisorPermissions = Permission::whereIn('name', [
                 'camp.view',
                 'camp.update',
@@ -142,9 +139,17 @@ class PermissionSeeder extends Seeder
                 'statistics.export',
                 'aid.view',
                 'aid.distribute',
-            ])->get();
+            ])->get()->pluck('id');
 
-            $supervisorRole->permissions()->sync($supervisorPermissions->pluck('id'));
+            $supervisorRole->permissions()->sync($supervisorPermissions);
+        }
+
+        if ($managerRole) {
+            $managerPermissions = Permission::whereIn('group', [
+                'camps', 'guardians', 'family_members', 'statistics', 'aid_distributions', 'maps', 'reports'
+            ])->get()->pluck('id');
+
+            $managerRole->permissions()->sync($managerPermissions);
         }
     }
 }

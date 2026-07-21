@@ -119,7 +119,7 @@
         </div>
         @if($roles->hasPages())
         <div class="p-3">
-            {{ $roles->links('pagination::bootstrap-5') }}
+            {{ $roles->withQueryString()->links('pagination::bootstrap-5') }}
         </div>
         @endif
     </div>
@@ -195,34 +195,6 @@
                     <button type="submit" class="btn btn-danger">حذف</button>
                 </form>
             </div>
-        </div>
-    </div>
-</div>
-
-{{-- مودال الصلاحيات --}}
-<div class="modal fade" id="permissionsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="permissionsModalTitle">صلاحيات الدور</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="permissionsForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-body">
-                    <input type="hidden" name="role_id" id="perm_role_id">
-                    <div id="permissionsList">
-                        <div class="text-center py-3">
-                            <i class="fas fa-spinner fa-spin"></i> جاري التحميل...
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary" id="savePermissionsBtn">حفظ الصلاحيات</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -358,93 +330,10 @@ async function saveRolePermissions() {
     }
 }
 
-async function openPermissionsModal(roleId, roleName) {
-    document.getElementById('perm_role_id').value = roleId;
-    document.getElementById('permissionsForm').action = `/roles/${roleId}/permissions`;
-    document.getElementById('permissionsModalTitle').textContent = `صلاحيات الدور: ${roleName}`;
-
-    const list = document.getElementById('permissionsList');
-    list.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
-
-    try {
-        const res = await fetch(`/roles/${roleId}/permissions`);
-        const data = await res.json();
-
-        if (!data.success) throw new Error(data.message || 'خطأ');
-
-        renderPermissions(data.permissions, data.assigned || [], roleName);
-    } catch (err) {
-        list.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-    }
-
-    new bootstrap.Modal(document.getElementById('permissionsModal')).show();
+function openDeleteModal(id) {
+    document.getElementById('deleteForm').action = `/roles/${id}`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
-
-function renderPermissions(permissions, assigned, roleName) {
-    const list = document.getElementById('permissionsList');
-    const groups = {};
-    permissions.forEach(p => {
-        if (!groups[p.group]) groups[p.group] = [];
-        groups[p.group].push(p);
-    });
-
-    const isAdmin = roleName === 'admin';
-
-    let html = '';
-    for (const [group, perms] of Object.entries(groups)) {
-        html += `<div class="card mb-3"><div class="card-header"><strong>${group}</strong></div><div class="card-body"><div class="row">`;
-        perms.forEach(p => {
-            const checked = assigned.includes(p.id) || isAdmin ? 'checked' : '';
-            const disabled = isAdmin ? 'disabled' : '';
-            html += `<div class="col-md-6 mb-2">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="permissions[]" value="${p.id}" id="perm_${p.id}" ${checked} ${disabled}>
-                    <label class="form-check-label" for="perm_${p.id}">${p.display_name}</label>
-                </div>
-            </div>`;
-        });
-        html += '</div></div></div>';
-    }
-
-    if (isAdmin) {
-        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-1"></i> دور المدير العام يمتلك جميع الصلاحيات ولا يمكن تعديلها.</div>';
-    }
-
-    list.innerHTML = html;
-}
-
-document.getElementById('permissionsForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const btn = document.getElementById('savePermissionsBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
-
-    const formData = new FormData(this);
-    const roleId = document.getElementById('perm_role_id').value;
-
-    try {
-        const res = await fetch(`/roles/${roleId}/permissions`, {
-            method: 'PATCH',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-            body: formData,
-        });
-        const data = await res.json();
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('permissionsModal')).hide();
-            location.reload();
-        } else {
-            alert(data.message || 'حدث خطأ');
-        }
-    } catch (err) {
-        alert('حدث خطأ في الاتصال');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'حفظ الصلاحيات';
-    }
-});
 
 (function() {
     const form = document.getElementById('rolesFilterForm');

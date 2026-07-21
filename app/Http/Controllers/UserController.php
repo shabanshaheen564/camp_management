@@ -114,13 +114,23 @@ class UserController extends Controller
     {
         $allPermissions = \App\Models\Permission::orderBy('group')->orderBy('display_name')->get();
         $rolePermissions = $user->role ? $user->role->permissions()->pluck('permissions.id')->toArray() : [];
-        $userPermissions = $user->permissions()->pluck('permissions.id')->toArray();
+        $userPermissions = $user->permissions()->get()->mapWithKeys(function ($p) {
+            return [$p->id => $p->pivot->granted];
+        })->toArray();
+
+        $deniedPermissions = [];
+        foreach ($userPermissions as $permId => $granted) {
+            if (!$granted) {
+                $deniedPermissions[] = $permId;
+            }
+        }
 
         return response()->json([
             'success' => true,
             'permissions' => $allPermissions,
             'role_permissions' => $rolePermissions,
-            'user_permissions' => $userPermissions,
+            'user_permissions' => array_keys($userPermissions),
+            'denied_permissions' => $deniedPermissions,
             'role_name' => $user->role?->name,
         ]);
     }
@@ -132,8 +142,24 @@ class UserController extends Controller
             'permissions.*' => 'exists:permissions,id',
         ]);
 
-        $permissionIds = $request->input('permissions', []);
-        $user->permissions()->sync($permissionIds);
+        $submittedIds = $request->input('permissions', []);
+        $rolePermissions = $user->role ? $user->role->permissions()->pluck('permissions.id')->toArray() : [];
+
+        $syncData = [];
+
+        foreach ($submittedIds as $permId) {
+            if (!in_array($permId, $rolePermissions)) {
+                $syncData[$permId] = ['granted' => true];
+            }
+        }
+
+        foreach ($rolePermissions as $permId) {
+            if (!in_array($permId, $submittedIds)) {
+                $syncData[$permId] = ['granted' => false];
+            }
+        }
+
+        $user->permissions()->sync($syncData);
 
         return response()->json(['success' => true, 'message' => 'تم تحديث صلاحيات المستخدم بنجاح']);
     }

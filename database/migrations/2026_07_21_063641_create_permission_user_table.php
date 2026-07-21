@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('permission_id')->constrained()->cascadeOnDelete();
+            $table->boolean('granted')->default(true);
             $table->timestamps();
 
             $table->unique(['user_id', 'permission_id'], 'permission_user_unique');

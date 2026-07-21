@@ -312,7 +312,7 @@ async function openUserPermissionsModal(userId, userName) {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'خطأ');
-        renderUserPermissions(data.permissions, data.role_permissions || [], data.user_permissions || [], data.role_name);
+        renderUserPermissions(data.permissions, data.role_permissions || [], data.user_permissions || [], data.denied_permissions || [], data.role_name);
     } catch (err) {
         list.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
     }
@@ -320,7 +320,7 @@ async function openUserPermissionsModal(userId, userName) {
     new bootstrap.Modal(document.getElementById('userPermissionsModal')).show();
 }
 
-function renderUserPermissions(permissions, rolePerms, userPerms, roleName) {
+function renderUserPermissions(permissions, rolePerms, userPerms, deniedPerms, roleName) {
     const list = document.getElementById('userPermissionsList');
     const groups = {};
     permissions.forEach(p => {
@@ -329,17 +329,28 @@ function renderUserPermissions(permissions, rolePerms, userPerms, roleName) {
     });
 
     const isAdmin = roleName === 'admin';
+    const deniedSet = new Set(deniedPerms || []);
 
     let html = '';
     for (const [group, perms] of Object.entries(groups)) {
         html += `<div class="card mb-3"><div class="card-header"><strong>${group}</strong></div><div class="card-body"><div class="row">`;
         perms.forEach(p => {
-            const checked = userPerms.includes(p.id) || rolePerms.includes(p.id) ? 'checked' : '';
+            const isFromRole = rolePerms.includes(p.id) && !userPerms.includes(p.id);
+            const isDenied = deniedSet.has(p.id);
+            const checked = (userPerms.includes(p.id) || (rolePerms.includes(p.id) && !isDenied)) && !isAdmin ? 'checked' : '';
             const disabled = isAdmin ? 'disabled' : '';
+
+            let badge = '';
+            if (isFromRole && !isDenied) {
+                badge = ' <span class="badge bg-secondary" style="font-size:0.65rem;">من الدور</span>';
+            } else if (userPerms.includes(p.id) && !rolePerms.includes(p.id)) {
+                badge = ' <span class="badge bg-primary" style="font-size:0.65rem;">إضافي</span>';
+            }
+
             html += `<div class="col-md-6 mb-2">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="permissions[]" value="${p.id}" id="up_perm_${p.id}" ${checked} ${disabled}>
-                    <label class="form-check-label" for="up_perm_${p.id}">${p.display_name}</label>
+                    <label class="form-check-label" for="up_perm_${p.id}">${p.display_name}${badge}</label>
                 </div>
             </div>`;
         });

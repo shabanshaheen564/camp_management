@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\RoleCreatedNotification;
@@ -87,23 +88,24 @@ class RoleController extends Controller
         return back()->with('success', $status);
     }
 
-    public function updatePermissions(Request $request, Role $role)
+    public function getRolePermissions(Request $request, Role $role)
     {
-        if ($request->isMethod('get') || $request->isMethod('patch')) {
-            $allPermissions = Permission::orderBy('group')->orderBy('display_name')->get();
-            $assigned = $role->permissions()->pluck('permissions.id')->toArray();
+        $allPermissions = Permission::orderBy('group')->orderBy('display_name')->get();
+        $assigned = $role->permissions()->pluck('permissions.id')->toArray();
 
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'permissions' => $allPermissions,
-                    'assigned' => $assigned,
-                ]);
-            }
-
-            return view('camp_management.role_permissions', compact('role', 'allPermissions', 'assigned'));
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'permissions' => $allPermissions,
+                'assigned' => $assigned,
+            ]);
         }
 
+        return view('camp_management.role_permissions', compact('role', 'allPermissions', 'assigned'));
+    }
+
+    public function updatePermissions(Request $request, Role $role)
+    {
         if ($role->name === 'admin') {
             $allPermissions = Permission::all();
             $role->permissions()->sync($allPermissions->pluck('id'));

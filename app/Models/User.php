@@ -59,17 +59,19 @@ class User extends Authenticatable
 
     public function permissions()
     {
-        return $this->belongsToMany(Permission::class, 'permission_user');
+        return $this->belongsToMany(Permission::class, 'permission_user')->withPivot('granted');
     }
 
     public function hasPermission($permission)
     {
         if (!$this->role) return false;
 
-        $roleHas = $this->role->permissions()->where('name', $permission)->exists();
-        if ($roleHas) return true;
+        $userPermission = $this->permissions()->where('name', $permission)->first();
+        if ($userPermission) {
+            return $userPermission->pivot->granted;
+        }
 
-        return $this->permissions()->where('name', $permission)->exists();
+        return $this->role->permissions()->where('name', $permission)->exists();
     }
 
     public function hasAnyPermission(array $permissions)
