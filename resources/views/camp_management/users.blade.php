@@ -372,7 +372,8 @@ document.getElementById('userPermissionsForm').addEventListener('submit', async 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
 
-    const formData = new FormData(this);
+    const checkboxes = this.querySelectorAll('input[name="permissions[]"]:checked');
+    const permissionIds = Array.from(checkboxes).map(cb => cb.value);
     const userId = document.getElementById('up_user_id').value;
 
     try {
@@ -381,8 +382,9 @@ document.getElementById('userPermissionsForm').addEventListener('submit', async 
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 'Accept': 'application/json',
+                'Content-Type': 'application/json',
             },
-            body: formData,
+            body: JSON.stringify({ permissions: permissionIds }),
         });
         const data = await res.json();
         if (data.success) {

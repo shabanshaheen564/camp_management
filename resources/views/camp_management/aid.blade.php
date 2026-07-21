@@ -149,14 +149,18 @@
                             <span class="badge bg-{{ $p['class'] }}">{{ $p['label'] }}</span>
                         </td>
                         <td>
+                            @permission('aid.update')
                             <button class="btn btn-sm btn-outline-primary me-1"
                                 onclick="openEditModal({{ json_encode($aid) }})">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            @endpermission
+                            @permission('aid.delete')
                             <button class="btn btn-sm btn-outline-danger"
                                 onclick="openDeleteModal({{ $aid->id }})">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            @endpermission
                         </td>
                     </tr>
                     @empty

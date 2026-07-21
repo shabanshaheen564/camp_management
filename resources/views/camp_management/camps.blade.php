@@ -202,10 +202,13 @@
                             </td>
                             <td>
                                 <div class="d-flex gap-1">
+                                    @permission('camp.update')
                                     <button class="btn btn-sm btn-outline-primary me-1"
                                         onclick="openEditModal({{ json_encode($camp) }})">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    @endpermission
+                                    @permission('camp.manage')
                                     <form method="POST" action="{{ route('camps.toggle', $camp) }}" class="d-inline">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="btn btn-sm btn-outline-{{ $camp->is_active ? 'warning' : 'success' }} me-1"
@@ -213,10 +216,13 @@
                                             <i class="fas fa-{{ $camp->is_active ? 'ban' : 'check' }}"></i>
                                         </button>
                                     </form>
+                                    @endpermission
+                                    @permission('camp.delete')
                                     <button class="btn btn-sm" style="background:#fef2f2; color:#dc2626; border:none;"
                                         onclick="openDeleteModal({{ $camp->id }})" title="حذف">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    @endpermission
                                 </div>
                             </td>
                         </tr>

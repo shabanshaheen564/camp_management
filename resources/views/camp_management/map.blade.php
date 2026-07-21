@@ -609,6 +609,7 @@
 
             {{-- TAB: HOSPITALS --}}
             <div id="tab-hospitals" class="panel-body" style="display:none">
+                @permission('map.manage')
                 <div class="add-section">
                     <h6><i class="fas fa-plus-circle me-1 text-primary"></i>إضافة مستشفى</h6>
                     <div class="click-hint"><i class="fas fa-mouse-pointer"></i><span>انقر على الخريطة لتحديد الموقع</span>
@@ -636,6 +637,7 @@
                     <button class="btn btn-primary btn-sm w-100" onclick="addHospital()"><i
                             class="fas fa-save me-1"></i>حفظ</button>
                 </div>
+                @endpermission
                 <div id="hospitals-list">
                     @foreach($hospitals as $h)
                         <div class="hospital-item" id="hi-{{ $h->id }}">
@@ -643,7 +645,9 @@
                                 <div class="h-name"><i class="fas fa-hospital-alt text-danger me-1"></i>{{ $h->name }}</div>
                                 <div class="h-type">{{ $h->type ?? 'عام' }}{{ $h->phone ? ' • ' . $h->phone : '' }}</div>
                             </div>
+                            @permission('map.manage')
                             <button class="btn-del" onclick="deleteHospital({{ $h->id }})"><i class="fas fa-trash"></i></button>
+                            @endpermission
                         </div>
                     @endforeach
                 </div>

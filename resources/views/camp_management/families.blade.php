@@ -174,23 +174,26 @@
                             </td>
                             <td>
                                 <div class="d-flex gap-1">
-                                    {{-- عرض الأفراد --}}
+                                    @permission('guardian.view')
                                     <button class="btn btn-sm" style="background:#f0fdf4; color:#166534; border:none;"
                                         onclick="showMembers({{ $family->id }}, '{{ addslashes($family->full_name ?? $family->name) }}')"
                                         title="أفراد الأسرة">
                                         <i class="fas fa-users"></i>
                                     </button>
-                                    {{-- تعديل --}}
+                                    @endpermission
+                                    @permission('guardian.update')
                                     <button class="btn btn-sm" style="background:#eff6ff; color:#2563eb; border:none;"
                                         onclick='openEditModal({{ $family->id }}, @json($family))' title="تعديل">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    {{-- حذف --}}
+                                    @endpermission
+                                    @permission('guardian.delete')
                                     <button class="btn btn-sm" style="background:#fef2f2; color:#dc2626; border:none;"
                                         onclick="confirmDelete({{ $family->id }}, '{{ addslashes($family->full_name ?? $family->name) }}')"
                                         title="حذف">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    @endpermission
                                 </div>
                             </td>
                         </tr>

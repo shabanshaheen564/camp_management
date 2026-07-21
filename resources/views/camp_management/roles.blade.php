@@ -302,10 +302,9 @@ async function saveRolePermissions() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
 
-    const form = document.getElementById('rolePermissionsList');
-    const checkboxes = form.querySelectorAll('input[name="permissions[]"]:checked');
-    const formData = new FormData();
-    checkboxes.forEach(cb => formData.append('permissions[]', cb.value));
+    const list = document.getElementById('rolePermissionsList');
+    const checkboxes = list.querySelectorAll('input[name="permissions[]"]:checked');
+    const permissionIds = Array.from(checkboxes).map(cb => cb.value);
 
     try {
         const res = await fetch(`/roles/${roleId}/permissions`, {
@@ -313,8 +312,9 @@ async function saveRolePermissions() {
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 'Accept': 'application/json',
+                'Content-Type': 'application/json',
             },
-            body: formData,
+            body: JSON.stringify({ permissions: permissionIds }),
         });
         const data = await res.json();
         if (data.success) {
