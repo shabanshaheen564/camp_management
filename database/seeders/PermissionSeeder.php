@@ -47,6 +47,22 @@ class PermissionSeeder extends Seeder
             ['name' => 'statistics.view', 'display_name' => 'View Statistics', 'description' => 'View camp statistics', 'group' => 'statistics'],
             ['name' => 'statistics.export', 'display_name' => 'Export Statistics', 'description' => 'Export statistical reports', 'group' => 'statistics'],
 
+            // Reports
+            ['name' => 'report.view', 'display_name' => 'View Reports', 'description' => 'View reports dashboard', 'group' => 'reports'],
+            ['name' => 'report.export', 'display_name' => 'Export Reports', 'description' => 'Export reports', 'group' => 'reports'],
+
+            // Maps
+            ['name' => 'map.view', 'display_name' => 'View Map', 'description' => 'View camp map', 'group' => 'maps'],
+            ['name' => 'map.manage', 'display_name' => 'Manage Map', 'description' => 'Manage map layers and hospitals', 'group' => 'maps'],
+
+            // Settings
+            ['name' => 'settings.view', 'display_name' => 'View Settings', 'description' => 'View system settings', 'group' => 'settings'],
+            ['name' => 'settings.manage', 'display_name' => 'Manage Settings', 'description' => 'Update system settings', 'group' => 'settings'],
+
+            // Notifications
+            ['name' => 'notification.view', 'display_name' => 'View Notifications', 'description' => 'View notifications', 'group' => 'notifications'],
+            ['name' => 'notification.manage', 'display_name' => 'Manage Notifications', 'description' => 'Send/manage notifications', 'group' => 'notifications'],
+
             // User Management
             ['name' => 'user.create', 'display_name' => 'Create Users', 'description' => 'Create new users', 'group' => 'users'],
             ['name' => 'user.view', 'display_name' => 'View Users', 'description' => 'View user details', 'group' => 'users'],
@@ -55,9 +71,15 @@ class PermissionSeeder extends Seeder
             ['name' => 'user.view-trash', 'display_name' => 'View Deleted Users', 'description' => 'View deleted users in trash', 'group' => 'users'],
             ['name' => 'user.restore', 'display_name' => 'Restore Users', 'description' => 'Restore deleted users from trash', 'group' => 'users'],
             ['name' => 'user.force-delete', 'display_name' => 'Force Delete Users', 'description' => 'Permanently delete users', 'group' => 'users'],
+            ['name' => 'user.toggle', 'display_name' => 'Toggle User Status', 'description' => 'Activate/deactivate users', 'group' => 'users'],
 
             // Role Management
+            ['name' => 'role.create', 'display_name' => 'Create Roles', 'description' => 'Create new roles', 'group' => 'roles'],
+            ['name' => 'role.view', 'display_name' => 'View Roles', 'description' => 'View roles list', 'group' => 'roles'],
+            ['name' => 'role.update', 'display_name' => 'Update Roles', 'description' => 'Update role information', 'group' => 'roles'],
+            ['name' => 'role.delete', 'display_name' => 'Delete Roles', 'description' => 'Delete roles', 'group' => 'roles'],
             ['name' => 'role.manage', 'display_name' => 'Manage Roles', 'description' => 'Manage roles and permissions', 'group' => 'roles'],
+            ['name' => 'role.update-permissions', 'display_name' => 'Update Role Permissions', 'description' => 'Update permissions for a role', 'group' => 'roles'],
 
             // Aid Distribution Management
             ['name' => 'aid.create', 'display_name' => 'Create Aid Distributions', 'description' => 'Create new aid distributions', 'group' => 'aid_distributions'],
@@ -69,6 +91,11 @@ class PermissionSeeder extends Seeder
             ['name' => 'aid.view-trash', 'display_name' => 'View Deleted Aid Distributions', 'description' => 'View deleted aid distributions in trash', 'group' => 'aid_distributions'],
             ['name' => 'aid.restore', 'display_name' => 'Restore Aid Distributions', 'description' => 'Restore deleted aid distributions from trash', 'group' => 'aid_distributions'],
             ['name' => 'aid.force-delete', 'display_name' => 'Force Delete Aid Distributions', 'description' => 'Permanently delete aid distributions', 'group' => 'aid_distributions'],
+
+            // Import/Export
+            ['name' => 'import.camps', 'display_name' => 'Import Camps', 'description' => 'Import camps from Excel', 'group' => 'import_export'],
+            ['name' => 'import.families', 'display_name' => 'Import Families', 'description' => 'Import families and members from Excel', 'group' => 'import_export'],
+            ['name' => 'export.reports', 'display_name' => 'Export Reports', 'description' => 'Export data reports', 'group' => 'import_export'],
         ];
 
         foreach ($permissions as $permission) {

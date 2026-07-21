@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Notifications\RoleCreatedNotification;
 
 class RoleController extends Controller
 {
@@ -20,7 +23,9 @@ class RoleController extends Controller
 
         $totalRoles = Role::count();
 
-        return view('camp_management.roles', compact('roles', 'totalRoles'));
+        $allPermissions = \App\Models\Permission::orderBy('group')->orderBy('display_name')->get();
+
+        return view('camp_management.roles', compact('roles', 'totalRoles', 'allPermissions'));
     }
 
     public function store(Request $request)
@@ -37,6 +42,11 @@ class RoleController extends Controller
             'description'  => $request->description,
             'is_active'    => true,
         ]);
+
+        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new RoleCreatedNotification($request->name, $request->display_name));
+        }
 
         return redirect()->route('roles.index')->with('success', 'تمت إضافة الدور بنجاح');
     }
@@ -65,5 +75,64 @@ class RoleController extends Controller
         }
         $role->delete();
         return redirect()->route('roles.index')->with('success', 'تم حذف الدور بنجاح');
+    }
+
+    public function toggleStatus(Role $role)
+    {
+        if ($role->name === 'admin') {
+            return back()->with('error', 'لا يمكن تعديل حالة دور المدير العام');
+        }
+        $role->update(['is_active' => !$role->is_active]);
+        $status = $role->is_active ? 'تم تفعيل الدور' : 'تم تعليق الدور';
+        return back()->with('success', $status);
+    }
+
+    public function updatePermissions(Request $request, Role $role)
+    {
+        if ($request->isMethod('get') || $request->isMethod('patch')) {
+            $allPermissions = Permission::orderBy('group')->orderBy('display_name')->get();
+            $assigned = $role->permissions()->pluck('permissions.id')->toArray();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'permissions' => $allPermissions,
+                    'assigned' => $assigned,
+                ]);
+            }
+
+            return view('camp_management.role_permissions', compact('role', 'allPermissions', 'assigned'));
+        }
+
+        if ($role->name === 'admin') {
+            $allPermissions = Permission::all();
+            $role->permissions()->sync($allPermissions->pluck('id'));
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'تم تحديث الصلاحيات بنجاح']);
+            }
+
+            return back()->with('success', 'تم تحديث الصلاحيات بنجاح');
+        }
+
+        $request->validate([
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id',
+        ]);
+
+        $permissionIds = $request->input('permissions', []);
+
+        $filtered = Permission::whereIn('id', $permissionIds)
+            ->where('group', '!=', 'roles')
+            ->pluck('id')
+            ->toArray();
+
+        $role->permissions()->sync($filtered);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'تم تحديث الصلاحيات بنجاح']);
+        }
+
+        return back()->with('success', 'تم تحديث الصلاحيات بنجاح');
     }
 }

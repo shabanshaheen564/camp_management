@@ -25,7 +25,13 @@ class RoleSeeder extends Seeder
                 'display_name' => 'Camp Supervisor',
                 'description' => 'Manages specific camp and its displaced people',
                 'is_active' => true,
-            ]
+            ],
+            [
+                'name' => 'camp_manager',
+                'display_name' => 'Camp Manager',
+                'description' => 'Manages assigned camp operations with limited permissions',
+                'is_active' => true,
+            ],
         ];
 
         foreach ($roles as $role) {

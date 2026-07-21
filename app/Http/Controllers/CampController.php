@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use SimpleXLSX;
 use Illuminate\Support\Facades\Storage;
+use App\Notifications\CampCreatedNotification;
 
 class CampController extends Controller
 {
@@ -60,6 +61,11 @@ class CampController extends Controller
         'created_by'  => auth()->id(),
     ]);
 
+    $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+    foreach ($admins as $admin) {
+        $admin->notify(new CampCreatedNotification($request->name, $request->location));
+    }
+
     return redirect()->route('camps.index')->with('success', 'تمت إضافة المخيم بنجاح');
 }
 
@@ -97,6 +103,13 @@ public function update(Request $request, Camp $camp)
     {
         $camp->delete();
         return back()->with('success', 'تم حذف المخيم بنجاح.');
+    }
+
+    public function toggleStatus(Camp $camp)
+    {
+        $camp->update(['is_active' => !$camp->is_active]);
+        $status = $camp->is_active ? 'تم تفعيل المخيم' : 'تم تعليق المخيم';
+        return back()->with('success', $status);
     }
    public function show(Camp $camp)
     {

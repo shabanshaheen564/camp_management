@@ -85,12 +85,21 @@
                                 onclick="openEditModal({{ $role->id }}, '{{ addslashes($role->name) }}', '{{ addslashes($role->display_name ?? '') }}', '{{ addslashes($role->description ?? '') }}')">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            @if($role->users_count == 0)
+                            @if($role->name !== 'admin')
+                            <form method="POST" action="{{ route('roles.toggle', $role) }}" class="d-inline">
+                                @csrf @method('PATCH')
+                                <button type="submit" class="btn btn-sm btn-outline-{{ $role->is_active ? 'warning' : 'success' }} me-1"
+                                    title="{{ $role->is_active ? 'تعليق' : 'تفعيل' }}">
+                                    <i class="fas fa-{{ $role->is_active ? 'ban' : 'check' }}"></i>
+                                </button>
+                            </form>
+                            @endif
+                            @if($role->users_count == 0 && $role->name !== 'admin')
                             <button class="btn btn-sm btn-outline-danger"
                                 onclick="openDeleteModal({{ $role->id }})">
                                 <i class="fas fa-trash"></i>
                             </button>
-                            @else
+                            @elseif($role->users_count > 0)
                             <button class="btn btn-sm btn-outline-danger" disabled title="لا يمكن الحذف: الدور مرتبط بمستخدمين">
                                 <i class="fas fa-lock"></i>
                             </button>
@@ -144,9 +153,26 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">إضافة</button>
+
+                {{-- قسم الصلاحيات --}}
+                <div id="rolePermissionsSection" style="display:none;">
+                    <hr>
+                    <h6 class="mb-3"><i class="fas fa-key me-1"></i> صلاحيات الدور</h6>
+                    <div id="rolePermissionsList">
+                        <div class="text-center py-2">
+                            <i class="fas fa-spinner fa-spin"></i> جاري التحميل...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="justify-content: space-between;">
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitRoleForm()">تحديث البيانات</button>
+                        <button type="button" class="btn btn-success" id="savePermissionsBtn" onclick="saveRolePermissions()" style="display:none;">حفظ الصلاحيات</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -172,10 +198,40 @@
         </div>
     </div>
 </div>
+
+{{-- مودال الصلاحيات --}}
+<div class="modal fade" id="permissionsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="permissionsModalTitle">صلاحيات الدور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="permissionsForm" method="POST">
+                @csrf
+                @method('PATCH')
+                <div class="modal-body">
+                    <input type="hidden" name="role_id" id="perm_role_id">
+                    <div id="permissionsList">
+                        <div class="text-center py-3">
+                            <i class="fas fa-spinner fa-spin"></i> جاري التحميل...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary" id="savePermissionsBtn">حفظ الصلاحيات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
+const allPermissions = @json($allPermissions ?? []);
+
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'إضافة دور جديد';
     document.getElementById('roleForm').action = "{{ route('roles.store') }}";
@@ -184,6 +240,8 @@ function openAddModal() {
     document.getElementById('f_name').value = '';
     document.getElementById('f_display_name').value = '';
     document.getElementById('f_description').value = '';
+    document.getElementById('rolePermissionsSection').style.display = 'none';
+    document.getElementById('savePermissionsBtn').style.display = 'none';
     new bootstrap.Modal(document.getElementById('roleModal')).show();
 }
 
@@ -191,17 +249,202 @@ function openEditModal(id, name, displayName, description) {
     document.getElementById('modalTitle').textContent = 'تعديل الدور';
     document.getElementById('roleForm').action = `/roles/${id}`;
     document.getElementById('methodField').innerHTML = '<input type="hidden" name="_method" value="PUT">';
-    document.getElementById('submitBtn').textContent = 'تحديث';
+    document.getElementById('submitBtn').textContent = 'تحديث البيانات';
     document.getElementById('f_name').value = name;
     document.getElementById('f_display_name').value = displayName;
     document.getElementById('f_description').value = description;
+    document.getElementById('rolePermissionsSection').style.display = 'block';
+    document.getElementById('savePermissionsBtn').style.display = 'inline-block';
+
+    loadRolePermissions(id, name);
+
     new bootstrap.Modal(document.getElementById('roleModal')).show();
 }
 
-function openDeleteModal(id) {
-    document.getElementById('deleteForm').action = `/roles/${id}`;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+async function loadRolePermissions(roleId, roleName) {
+    const list = document.getElementById('rolePermissionsList');
+    list.innerHTML = '<div class="text-center py-2"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+
+    try {
+        const res = await fetch(`/roles/${roleId}/permissions`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'خطأ');
+        renderRolePermissions(data.permissions, data.assigned || [], roleName);
+    } catch (err) {
+        list.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    }
 }
+
+function renderRolePermissions(permissions, assigned, roleName) {
+    const list = document.getElementById('rolePermissionsList');
+    const groups = {};
+    permissions.forEach(p => {
+        if (!groups[p.group]) groups[p.group] = [];
+        groups[p.group].push(p);
+    });
+
+    const isAdmin = roleName === 'admin';
+
+    let html = '';
+    for (const [group, perms] of Object.entries(groups)) {
+        html += `<div class="card mb-3"><div class="card-header"><strong>${group}</strong></div><div class="card-body"><div class="row">`;
+        perms.forEach(p => {
+            const isRolesGroup = p.group === 'roles';
+            const checked = (assigned.includes(p.id) || isAdmin) && !isRolesGroup ? 'checked' : '';
+            const disabled = isAdmin || isRolesGroup ? 'disabled' : '';
+            html += `<div class="col-md-6 mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permissions[]" value="${p.id}" id="rperm_${p.id}" ${checked} ${disabled}>
+                    <label class="form-check-label" for="rperm_${p.id}">${p.display_name}</label>
+                    ${isRolesGroup && !isAdmin ? '<small class="text-muted d-block" style="font-size:0.75rem;">(حصراً للمدير العام)</small>' : ''}
+                </div>
+            </div>`;
+        });
+        html += '</div></div></div>';
+    }
+
+    if (isAdmin) {
+        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-1"></i> دور المدير العام يمتلك جميع الصلاحيات ولا يمكن تعديلها.</div>';
+    }
+
+    list.innerHTML = html;
+}
+
+function submitRoleForm() {
+    document.getElementById('roleForm').submit();
+}
+
+async function saveRolePermissions() {
+    const roleId = document.querySelector('#roleForm input[name="_method"]')?.value === 'PUT'
+        ? document.getElementById('roleForm').action.split('/').pop()
+        : null;
+
+    if (!roleId) {
+        alert('يرجى حفظ الدور أولاً قبل تعديل الصلاحيات');
+        return;
+    }
+
+    const btn = document.getElementById('savePermissionsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+    const form = document.getElementById('rolePermissionsList');
+    const checkboxes = form.querySelectorAll('input[name="permissions[]"]:checked');
+    const formData = new FormData();
+    checkboxes.forEach(cb => formData.append('permissions[]', cb.value));
+
+    try {
+        const res = await fetch(`/roles/${roleId}/permissions`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('تم حفظ الصلاحيات بنجاح');
+        } else {
+            alert(data.message || 'حدث خطأ');
+        }
+    } catch (err) {
+        alert('حدث خطأ في الاتصال');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'حفظ الصلاحيات';
+    }
+}
+
+async function openPermissionsModal(roleId, roleName) {
+    document.getElementById('perm_role_id').value = roleId;
+    document.getElementById('permissionsForm').action = `/roles/${roleId}/permissions`;
+    document.getElementById('permissionsModalTitle').textContent = `صلاحيات الدور: ${roleName}`;
+
+    const list = document.getElementById('permissionsList');
+    list.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+
+    try {
+        const res = await fetch(`/roles/${roleId}/permissions`);
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.message || 'خطأ');
+
+        renderPermissions(data.permissions, data.assigned || [], roleName);
+    } catch (err) {
+        list.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    }
+
+    new bootstrap.Modal(document.getElementById('permissionsModal')).show();
+}
+
+function renderPermissions(permissions, assigned, roleName) {
+    const list = document.getElementById('permissionsList');
+    const groups = {};
+    permissions.forEach(p => {
+        if (!groups[p.group]) groups[p.group] = [];
+        groups[p.group].push(p);
+    });
+
+    const isAdmin = roleName === 'admin';
+
+    let html = '';
+    for (const [group, perms] of Object.entries(groups)) {
+        html += `<div class="card mb-3"><div class="card-header"><strong>${group}</strong></div><div class="card-body"><div class="row">`;
+        perms.forEach(p => {
+            const checked = assigned.includes(p.id) || isAdmin ? 'checked' : '';
+            const disabled = isAdmin ? 'disabled' : '';
+            html += `<div class="col-md-6 mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permissions[]" value="${p.id}" id="perm_${p.id}" ${checked} ${disabled}>
+                    <label class="form-check-label" for="perm_${p.id}">${p.display_name}</label>
+                </div>
+            </div>`;
+        });
+        html += '</div></div></div>';
+    }
+
+    if (isAdmin) {
+        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-1"></i> دور المدير العام يمتلك جميع الصلاحيات ولا يمكن تعديلها.</div>';
+    }
+
+    list.innerHTML = html;
+}
+
+document.getElementById('permissionsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('savePermissionsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+    const formData = new FormData(this);
+    const roleId = document.getElementById('perm_role_id').value;
+
+    try {
+        const res = await fetch(`/roles/${roleId}/permissions`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('permissionsModal')).hide();
+            location.reload();
+        } else {
+            alert(data.message || 'حدث خطأ');
+        }
+    } catch (err) {
+        alert('حدث خطأ في الاتصال');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'حفظ الصلاحيات';
+    }
+});
 
 (function() {
     const form = document.getElementById('rolesFilterForm');

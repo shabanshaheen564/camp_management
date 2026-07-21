@@ -206,6 +206,13 @@
                                         onclick="openEditModal({{ json_encode($camp) }})">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    <form method="POST" action="{{ route('camps.toggle', $camp) }}" class="d-inline">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-outline-{{ $camp->is_active ? 'warning' : 'success' }} me-1"
+                                            title="{{ $camp->is_active ? 'تعليق' : 'تفعيل' }}">
+                                            <i class="fas fa-{{ $camp->is_active ? 'ban' : 'check' }}"></i>
+                                        </button>
+                                    </form>
                                     <button class="btn btn-sm" style="background:#fef2f2; color:#dc2626; border:none;"
                                         onclick="openDeleteModal({{ $camp->id }})" title="حذف">
                                         <i class="fas fa-trash"></i>

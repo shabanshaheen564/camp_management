@@ -11,6 +11,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\NotificationController;
 
 // صفحة الترحيب
 Route::get('/', fn() => view('welcome'))->name('home');
@@ -28,6 +29,7 @@ Route::middleware('auth')->group(function () {
 
     // المخيمات
     Route::resource('camps', CampController::class)->except(['show', 'create', 'edit']);
+    Route::patch('/camps/{camp}/toggle', [CampController::class, 'toggleStatus'])->name('camps.toggle');
     Route::get('/camps/import', [CampController::class, 'showImportForm'])->name('camps.import.form');
     Route::post('/camps/import/preview', [CampController::class, 'importPreview'])->name('camps.import.preview');
     Route::post('/camps/import', [CampController::class, 'importExecute'])->name('camps.import');
@@ -60,14 +62,24 @@ Route::middleware('auth')->group(function () {
     // المستخدمون
     Route::resource('users', UserController::class)->except(['show', 'create', 'edit']);
     Route::patch('/users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+    Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions'])->name('users.permissions.show');
+    Route::patch('/users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.permissions.update');
 
     // الأدوار
     Route::resource('roles', RoleController::class)->except(['show', 'create', 'edit']);
+    Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->name('roles.toggle');
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->name('roles.permissions.show');
+    Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->name('roles.permissions.update');
     Route::middleware(['auth', 'admin'])->group(function () {
         Route::resource('users', UserController::class);
         Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
         Route::resource('roles', RoleController::class);
     });
+
+    // الإشعارات
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
     Route::prefix('map')->name('map.')->middleware(['auth'])->group(function () {
     Route::get('/',                    [MapController::class, 'index'])->name('index');
     Route::get('/camps-data',          [MapController::class, 'campsData'])->name('camps.data');

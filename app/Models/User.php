@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Permission;
 
 class User extends Authenticatable
 {
@@ -56,22 +57,39 @@ class User extends Authenticatable
         return $this->role && ($this->role->name === $role || $this->role->slug === $role);
     }
 
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class, 'permission_user');
+    }
+
     public function hasPermission($permission)
     {
-        return $this->role && $this->role->permissions()->where('name', $permission)->exists();
+        if (!$this->role) return false;
+
+        $roleHas = $this->role->permissions()->where('name', $permission)->exists();
+        if ($roleHas) return true;
+
+        return $this->permissions()->where('name', $permission)->exists();
     }
 
     public function hasAnyPermission(array $permissions)
     {
-        return $this->role && $this->role->permissions()->whereIn('name', $permissions)->exists();
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function hasAllPermissions(array $permissions)
     {
-        if (!$this->role) return false;
-        
-        $userPermissions = $this->role->permissions()->whereIn('name', $permissions)->count();
-        return $userPermissions === count($permissions);
+        foreach ($permissions as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function isAdmin()

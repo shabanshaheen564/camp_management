@@ -6,6 +6,7 @@ use App\Models\Guardian;
 use App\Models\FamilyMember;
 use App\Models\Camp;
 use Illuminate\Http\Request;
+use App\Notifications\FamilyCreatedNotification;
 
 class FamilyController extends Controller
 {
@@ -55,21 +56,30 @@ class FamilyController extends Controller
     $parts = explode(' ', trim($data['full_name']));
 
    Guardian::create([
-     'camp_id' => $data['camp_id'],
-     'first_name' => $parts[0] ?? '',
-     'second_name' => $parts[1] ?? '',
-     'third_name' => $parts[2] ?? '',
-     'family_name' => $parts[3] ?? '',
-     'phone' => $data['phone'] ?? null,
-     'card_id' => $data['national_id'] ?? null,
-     'gender' => $data['gender'] ?? 'male',
-     'date_of_birth' => $data['date_of_birth'] ?? null,
-     'family_member_number' => 0,
+      'camp_id' => $data['camp_id'],
+      'first_name' => $parts[0] ?? '',
+      'second_name' => $parts[1] ?? '',
+      'third_name' => $parts[2] ?? '',
+      'family_name' => $parts[3] ?? '',
+      'phone' => $data['phone'] ?? null,
+      'card_id' => $data['national_id'] ?? null,
+      'gender' => $data['gender'] ?? 'male',
+      'date_of_birth' => $data['date_of_birth'] ?? null,
+      'family_member_number' => 0,
 
-     'nationality' => 'فلسطيني',
-     'marital_status' => $data['marital_status'] ?? 'single',
-     'is_disabled' => 0
- ]);
+      'nationality' => 'فلسطيني',
+      'marital_status' => $data['marital_status'] ?? 'single',
+      'is_disabled' => 0
+  ]);
+
+    $guardian = Guardian::where('card_id', $data['national_id'])->first();
+    if ($guardian) {
+        $campName = $guardian->camp?->name;
+        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new FamilyCreatedNotification($guardian->full_name ?? $guardian->first_name, $campName, $guardian->card_id));
+        }
+    }
 
     return back()->with('success', 'تم تسجيل العائلة');
 }

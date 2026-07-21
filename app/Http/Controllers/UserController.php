@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Notifications\UserCreatedNotification;
 
 class UserController extends Controller
 {
@@ -57,6 +58,14 @@ class UserController extends Controller
             'is_active' => true,
         ]);
 
+        $user = User::where('email', $request->email)->first();
+        if ($user && $user->role) {
+            $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new UserCreatedNotification($user->name, $user->role->display_name ?? $user->role->name));
+            }
+        }
+
         return redirect()->route('users.index')->with('success', 'تمت إضافة المستخدم بنجاح');
     }
 
@@ -99,5 +108,33 @@ class UserController extends Controller
         $user->update(['is_active' => !$user->is_active]);
         $status = $user->is_active ? 'تفعيل' : 'تعليق';
         return redirect()->route('users.index')->with('success', "تم {$status} المستخدم بنجاح");
+    }
+
+    public function getPermissions(User $user)
+    {
+        $allPermissions = \App\Models\Permission::orderBy('group')->orderBy('display_name')->get();
+        $rolePermissions = $user->role ? $user->role->permissions()->pluck('permissions.id')->toArray() : [];
+        $userPermissions = $user->permissions()->pluck('permissions.id')->toArray();
+
+        return response()->json([
+            'success' => true,
+            'permissions' => $allPermissions,
+            'role_permissions' => $rolePermissions,
+            'user_permissions' => $userPermissions,
+            'role_name' => $user->role?->name,
+        ]);
+    }
+
+    public function updatePermissions(Request $request, User $user)
+    {
+        $request->validate([
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id',
+        ]);
+
+        $permissionIds = $request->input('permissions', []);
+        $user->permissions()->sync($permissionIds);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث صلاحيات المستخدم بنجاح']);
     }
 }

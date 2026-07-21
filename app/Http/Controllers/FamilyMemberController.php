@@ -8,6 +8,7 @@ use App\Models\Guardian;
 use App\Models\User;
 use Illuminate\Http\Request;
 use SimpleXLSX;
+use App\Notifications\FamilyCreatedNotification;
 
 class FamilyMemberController extends Controller
 {
@@ -116,6 +117,7 @@ class FamilyMemberController extends Controller
             'guardian_card_id' => 'رقم هوية رب الأسرة',
             'guardian_name' => 'اسم رب الأسرة',
             'guardian_marital_status' => 'الحالة الاجتماعية لرب الأسرة',
+            'guardian_camp' => 'اسم المخيم',
             'name' => 'اسم الفرد',
             'card_id' => 'رقم البطاقة',
             'gender' => 'الجنس',
@@ -143,6 +145,24 @@ class FamilyMemberController extends Controller
 
         $newGuardianCardIds = array_diff(array_unique($guardianCardIds), $guardians->keys()->all());
 
+        $cardIdToMaritalStatus = [];
+        foreach ($rows as $row) {
+            $rowCardId = trim((string) ($row[$autoMapping['guardian_card_id'] ?? ''] ?? ''));
+            if ($rowCardId !== '') {
+                $maritalStatus = trim((string) ($row[$autoMapping['guardian_marital_status'] ?? ''] ?? ''));
+                $cardIdToMaritalStatus[$rowCardId] = $this->normalizeMaritalStatus($maritalStatus);
+            }
+        }
+
+        $filteredNewGuardianCardIds = [];
+        foreach ($newGuardianCardIds as $cardId) {
+            $status = $cardIdToMaritalStatus[$cardId] ?? 'single';
+            if (in_array($status, ['married', 'divorced', 'widowed'])) {
+                $filteredNewGuardianCardIds[] = $cardId;
+            }
+        }
+        $newGuardianCardIds = array_values(array_unique($filteredNewGuardianCardIds));
+
         return view('camp_management.members_import_map', compact('headers', 'rows', 'dbFields', 'guardians', 'autoMapping', 'newGuardianCardIds'));
     }
 
@@ -155,7 +175,8 @@ class FamilyMemberController extends Controller
         $keywords = [
             'guardian_card_id' => ['guardian', 'card', 'id', 'هوية', 'رب الأسرة', 'رقم الهوية', 'parent', 'ولي الأمر'],
             'guardian_name' => ['guardian name', 'guardian', 'اسم رب الأسرة', 'ولي الأمر', 'parent name', 'اسم ولي الأمر', 'اسم رب العائلة'],
-            'guardian_marital_status' => ['marital', 'حالة اجتماعية', 'متزوج', 'غير متزوج', 'social status', 'marital status'],
+            'guardian_marital_status' => ['marital', 'حالة اجتماعية', 'متزوج', 'غير متزوج', 'social status', 'marital status', 'أرمل', 'مطلق', 'أعزب', 'widowed', 'divorced', 'single', 'separated', 'منفصل'],
+            'guardian_camp' => ['camp', 'مخيم', 'اسم المخيم', 'المخيم', 'camp name', 'location'],
             'name' => ['name', 'الاسم', 'اسم الفرد', 'الاسم الكامل', 'fullname', 'full_name', 'first name', 'الاسم الاول'],
             'card_id' => ['card', 'بطاقة', 'رقم البطاقة', 'member id', 'member_card', 'كارت'],
             'gender' => ['gender', 'جنس', 'نوع', 'sex', 'male', 'female', 'ذكر', 'انثى'],
@@ -214,6 +235,7 @@ class FamilyMemberController extends Controller
 
         $guardianCardIdColumn = $mapping['guardian_card_id'] ?? null;
         $nameColumn = $mapping['name'] ?? null;
+        $campColumn = $mapping['guardian_camp'] ?? null;
 
         if (!$guardianCardIdColumn) {
             return redirect()->route('families.index')->with('error', 'يرجى تحديد عمود رقم هوية رب الأسرة.');
@@ -221,6 +243,10 @@ class FamilyMemberController extends Controller
 
         if (!$nameColumn) {
             return redirect()->route('families.index')->with('error', 'يرجى تحديد عمود اسم الفرد.');
+        }
+
+        if (!$campColumn) {
+            return redirect()->route('families.index')->with('error', 'يرجى تحديد عمود اسم المخيم.');
         }
 
         $guardianCardIds = [];
@@ -234,12 +260,22 @@ class FamilyMemberController extends Controller
         $existingGuardians = Guardian::withTrashed()->whereIn('card_id', array_unique($guardianCardIds))->get()->keyBy('card_id');
 
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
+        $newGuardians = [];
 
         foreach ($rows as $index => $row) {
             try {
-                $this->processMemberRow($row, $mapping, $guardianCardIdColumn, $nameColumn, $existingGuardians, $results);
+                $this->processMemberRow($row, $mapping, $guardianCardIdColumn, $nameColumn, $campColumn, $existingGuardians, $results, $newGuardians);
             } catch (\Throwable $e) {
                 $results['errors'][] = "السطر " . ($index + 2) . ": " . $e->getMessage();
+            }
+        }
+
+        if (!empty($newGuardians)) {
+            $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+            foreach ($newGuardians as $guardian) {
+                foreach ($admins as $admin) {
+                    $admin->notify(new FamilyCreatedNotification($guardian->full_name ?? $guardian->first_name, $guardian->camp?->name, $guardian->card_id));
+                }
             }
         }
 
@@ -248,7 +284,7 @@ class FamilyMemberController extends Controller
         )->with('import_errors', $results['errors']);
     }
 
-    protected function processMemberRow(array $row, array $mapping, ?string $guardianCardIdColumn, ?string $nameColumn, $existingGuardians, array &$results): void
+    protected function processMemberRow(array $row, array $mapping, ?string $guardianCardIdColumn, ?string $nameColumn, ?string $campColumn, $existingGuardians, array &$results, array &$newGuardians = []): void
     {
         $guardianCardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
         $name = trim((string) ($row[$nameColumn] ?? ''));
@@ -261,25 +297,33 @@ class FamilyMemberController extends Controller
             throw new \InvalidArgumentException('اسم الفرد مفقود');
         }
 
+        $guardianMaritalStatusRaw = trim((string) ($row[$mapping['guardian_marital_status'] ?? ''] ?? ''));
+        $guardianMaritalStatus = $this->normalizeMaritalStatus($guardianMaritalStatusRaw);
+        $isGuardian = in_array($guardianMaritalStatus, ['married', 'divorced', 'widowed']);
+
         $guardian = $existingGuardians->get($guardianCardId);
 
-        if (!$guardian) {
+        if (!$guardian && $isGuardian) {
             $guardianName = trim((string) ($row[$mapping['guardian_name'] ?? ''] ?? ''));
             if ($guardianName === '') {
                 $guardianName = 'رب أسرة ' . $guardianCardId;
             }
 
-            $guardianMaritalStatus = trim((string) ($row[$mapping['guardian_marital_status'] ?? ''] ?? ''));
-            if ($guardianMaritalStatus === '' || !in_array(strtolower($guardianMaritalStatus), ['married', 'متزوج'])) {
-                $guardianMaritalStatus = 'single';
-            } else {
-                $guardianMaritalStatus = 'married';
+            $campNameOrId = trim((string) ($row[$campColumn ?? ''] ?? ''));
+            if ($campNameOrId === '') {
+                throw new \InvalidArgumentException('اسم المخيم مفقود');
             }
 
-            $defaultCamp = \App\Models\Camp::where('is_active', true)->first();
+            $camp = Camp::where('is_active', true)->where(function ($q) use ($campNameOrId) {
+                $q->where('name', $campNameOrId)->orWhere('id', $campNameOrId);
+            })->first();
+
+            if (!$camp) {
+                throw new \InvalidArgumentException('المخيم غير موجود: ' . $campNameOrId);
+            }
 
             $guardian = Guardian::create([
-                'camp_id' => $defaultCamp?->id,
+                'camp_id' => $camp->id,
                 'card_id' => $guardianCardId,
                 'first_name' => $guardianName,
                 'second_name' => '',
@@ -295,16 +339,19 @@ class FamilyMemberController extends Controller
 
             $existingGuardians->put($guardianCardId, $guardian);
             $results['created']++;
+            $newGuardians[] = $guardian;
+        } elseif (!$guardian && !$isGuardian) {
+            throw new \InvalidArgumentException('رب الأسرة غير موجود: ' . $guardianCardId);
         }
 
         $data = [
             'guardian_id' => $guardian->id,
             'name' => $name,
-            'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
+            'marital_status' => in_array($guardian->marital_status, ['married', 'divorced', 'widowed']) ? $guardian->marital_status : 'single',
         ];
 
         foreach ($mapping as $dbField => $excelColumn) {
-            if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'name']) || !$excelColumn) continue;
+            if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'guardian_camp', 'name']) || !$excelColumn) continue;
             $rawValue = $row[$excelColumn] ?? '';
             $value = $this->normalizeExcelValue($rawValue, $dbField);
             if ($value === null || $value === '') continue;
@@ -386,5 +433,19 @@ class FamilyMemberController extends Controller
     {
         $normalized = mb_strtolower($value, 'UTF-8');
         return in_array($normalized, ['1', 'نعم', 'yes', 'true', 'disabled', 'ذوي الاحتياجات']);
+    }
+
+    protected function normalizeMaritalStatus(string $value): string
+    {
+        $normalized = mb_strtolower(trim($value), 'UTF-8');
+
+        return match (true) {
+            in_array($normalized, ['single', 'غير متزوج', 'أعزب', 'never married']) => 'single',
+            in_array($normalized, ['married', 'متزوج']) => 'married',
+            in_array($normalized, ['divorced', 'مطلق']) => 'divorced',
+            in_array($normalized, ['widowed', 'أرمل']) => 'widowed',
+            in_array($normalized, ['separated', 'منفصل']) => 'divorced',
+            default => 'single',
+        };
     }
 }

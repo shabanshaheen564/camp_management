@@ -117,6 +117,10 @@
                                 onclick="openEditModal({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ $user->email }}', {{ $user->role_id ?? 'null' }}, {{ $user->camp_id ?? 'null' }})">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            <button class="btn btn-sm btn-outline-info me-1"
+                                onclick="openUserPermissionsModal({{ $user->id }}, '{{ addslashes($user->name) }}')">
+                                <i class="fas fa-key"></i>
+                            </button>
                             <form method="POST" action="{{ route('users.toggle', $user) }}" class="d-inline">
                                 @csrf @method('PATCH')
                                 <button type="submit" class="btn btn-sm btn-outline-{{ $user->is_active ? 'warning' : 'success' }} me-1"
@@ -206,6 +210,34 @@
     </div>
 </div>
 
+{{-- مودال الصلاحيات --}}
+<div class="modal fade" id="userPermissionsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userPermissionsModalTitle">صلاحيات المستخدم</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="userPermissionsForm">
+                @csrf
+                @method('PATCH')
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" id="up_user_id">
+                    <div id="userPermissionsList">
+                        <div class="text-center py-3">
+                            <i class="fas fa-spinner fa-spin"></i> جاري التحميل...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary" id="saveUserPermissionsBtn">حفظ الصلاحيات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- مودال الحذف --}}
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
@@ -265,6 +297,96 @@ function openDeleteModal(id) {
     document.getElementById('deleteForm').action = `/users/${id}`;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+async function openUserPermissionsModal(userId, userName) {
+    document.getElementById('up_user_id').value = userId;
+    document.getElementById('userPermissionsForm').action = `/users/${userId}/permissions`;
+    document.getElementById('userPermissionsModalTitle').textContent = `صلاحيات المستخدم: ${userName}`;
+
+    const list = document.getElementById('userPermissionsList');
+    list.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+
+    try {
+        const res = await fetch(`/users/${userId}/permissions`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'خطأ');
+        renderUserPermissions(data.permissions, data.role_permissions || [], data.user_permissions || [], data.role_name);
+    } catch (err) {
+        list.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    }
+
+    new bootstrap.Modal(document.getElementById('userPermissionsModal')).show();
+}
+
+function renderUserPermissions(permissions, rolePerms, userPerms, roleName) {
+    const list = document.getElementById('userPermissionsList');
+    const groups = {};
+    permissions.forEach(p => {
+        if (!groups[p.group]) groups[p.group] = [];
+        groups[p.group].push(p);
+    });
+
+    const isAdmin = roleName === 'admin';
+
+    let html = '';
+    for (const [group, perms] of Object.entries(groups)) {
+        html += `<div class="card mb-3"><div class="card-header"><strong>${group}</strong></div><div class="card-body"><div class="row">`;
+        perms.forEach(p => {
+            const checked = userPerms.includes(p.id) || rolePerms.includes(p.id) ? 'checked' : '';
+            const disabled = isAdmin ? 'disabled' : '';
+            html += `<div class="col-md-6 mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permissions[]" value="${p.id}" id="up_perm_${p.id}" ${checked} ${disabled}>
+                    <label class="form-check-label" for="up_perm_${p.id}">${p.display_name}</label>
+                </div>
+            </div>`;
+        });
+        html += '</div></div></div>';
+    }
+
+    if (isAdmin) {
+        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-1"></i> دور المدير العام يمتلك جميع الصلاحيات ولا يمكن تعديلها.</div>';
+    } else {
+        html += '<div class="alert alert-warning"><i class="fas fa-info-circle me-1"></i> الصلاحيات المحددة تمنح للمستخدم بشكل إضافي إلى صلاحيات الدور. يمكنك إضافة صلاحيات أو إزالتها.</div>';
+    }
+
+    list.innerHTML = html;
+}
+
+document.getElementById('userPermissionsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveUserPermissionsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+    const formData = new FormData(this);
+    const userId = document.getElementById('up_user_id').value;
+
+    try {
+        const res = await fetch(`/users/${userId}/permissions`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('userPermissionsModal')).hide();
+            location.reload();
+        } else {
+            alert(data.message || 'حدث خطأ');
+        }
+    } catch (err) {
+        alert('حدث خطأ في الاتصال');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'حفظ الصلاحيات';
+    }
+});
 
 (function() {
     const form = document.getElementById('usersFilterForm');
