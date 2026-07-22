@@ -10,249 +10,133 @@ use Illuminate\Database\Seeder;
 class FamilyMemberSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * أفراد كل عائلة (زوج/زوجة + أبناء) مبنيين على card_id ولي الأمر.
+     * الأعمار محسوبة بشكل منطقي متوافق مع عمر وحالة كل ولي أمر:
+     * المتزوجون عندهم زوج/زوجة + أطفال، الأرامل والمطلقون عندهم أطفال بدون
+     * زوج/زوجة، الأعزب بدون أفراد.
      */
     public function run(): void
     {
         $guardians = Guardian::all();
-        
+
         if ($guardians->isEmpty()) {
             $this->command->warn('No guardians found. Please run GuardianSeeder first.');
             return;
         }
 
-        // Get specific guardians by card_id for consistent seeding
-        $guardian1 = $guardians->where('card_id', '123456789')->first(); // محمد السلمان
-        $guardian2 = $guardians->where('card_id', '987654321')->first(); // فاطمة أبو زيد
-        $guardian3 = $guardians->where('card_id', '456789123')->first(); // علي الأحمد
-        $guardian4 = $guardians->where('card_id', '789123456')->first(); // عائشة النجار
-        $guardian5 = $guardians->where('card_id', '321654987')->first(); // خالد الحسيني
-        $guardian6 = $guardians->where('card_id', '147258369')->first(); // أبو محمد الشامي
-        $guardian7 = $guardians->where('card_id', '963852741')->first(); // زينب العطار
+        // key = card_id تبع ولي الأمر
+        $familyData = [
 
-        $familyMembers = [];
+            // ---- مخيم الأمل ----
+            '900100001' => [ // محمد أحمد الحلبي - متزوج
+                ['name' => 'سلوى محمد الحلبي', 'gender' => 'female', 'card_id' => '900100011', 'dob' => '1985-08-20', 'phone' => '+970599100011', 'disabled' => false],
+                ['name' => 'ياسين محمد الحلبي', 'gender' => 'male', 'card_id' => '900100012', 'dob' => '2010-01-15', 'phone' => null, 'disabled' => false],
+                ['name' => 'رهف محمد الحلبي', 'gender' => 'female', 'card_id' => '900100013', 'dob' => '2014-05-09', 'phone' => null, 'disabled' => false],
+            ],
+            '900100002' => [ // سلمى يوسف البرغوثي - أرملة
+                ['name' => 'عمر سلمى البرغوثي', 'gender' => 'male', 'card_id' => '900100021', 'dob' => '2008-02-11', 'phone' => null, 'disabled' => false],
+                ['name' => 'جود سلمى البرغوثي', 'gender' => 'female', 'card_id' => '900100022', 'dob' => '2012-09-27', 'phone' => null, 'disabled' => false],
+            ],
+            '900100003' => [ // خليل إبراهيم شحادة - مطلق
+                ['name' => 'آدم خليل شحادة', 'gender' => 'male', 'card_id' => '900100031', 'dob' => '2015-03-03', 'phone' => null, 'disabled' => false],
+            ],
+            '900100004' => [], // عبير سامي مقداد - عزباء، بدون أفراد
 
-        // Family members for محمد السلمان (married)
-        if ($guardian1) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian1->id,
-                    'name' => 'أحمد محمد السلمان',
-                    'gender' => 'male',
-                    'card_id' => '123456790',
-                    'date_of_birth' => '2010-06-15',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian1->id,
-                    'name' => 'سارة محمد السلمان',
-                    'gender' => 'female',
-                    'card_id' => '123456791',
-                    'date_of_birth' => '2012-09-20',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian1->id,
-                    'name' => 'عائشة محمد السلمان',
-                    'gender' => 'female',
-                    'card_id' => '123456792',
-                    'date_of_birth' => '1987-02-10',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => '+970123456790',
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
+            // ---- مخيم الكرامة ----
+            '900200001' => [ // زياد ناصر أبو علي - متزوج، عائلة كبيرة
+                ['name' => 'هدى زياد أبو علي', 'gender' => 'female', 'card_id' => '900200011', 'dob' => '1988-12-01', 'phone' => '+970599200011', 'disabled' => false],
+                ['name' => 'كريم زياد أبو علي', 'gender' => 'male', 'card_id' => '900200012', 'dob' => '2011-06-18', 'phone' => null, 'disabled' => false],
+                ['name' => 'لارا زياد أبو علي', 'gender' => 'female', 'card_id' => '900200013', 'dob' => '2016-10-25', 'phone' => null, 'disabled' => false],
+                ['name' => 'سيف زياد أبو علي', 'gender' => 'male', 'card_id' => '900200014', 'dob' => '2020-02-14', 'phone' => null, 'disabled' => false],
+            ],
+            '900200002' => [ // منى خالد الديك - متزوجة
+                ['name' => 'نادين منى الديك', 'gender' => 'female', 'card_id' => '900200021', 'dob' => '2012-04-30', 'phone' => null, 'disabled' => false],
+                ['name' => 'وسيم منى الديك', 'gender' => 'male', 'card_id' => '900200022', 'dob' => '2017-11-05', 'phone' => null, 'disabled' => false],
+            ],
+            '900200003' => [ // أسامة فتحي ريان - أرمل، من ذوي الإعاقة
+                ['name' => 'مصطفى أسامة ريان', 'gender' => 'male', 'card_id' => '900200031', 'dob' => '2006-08-19', 'phone' => null, 'disabled' => false],
+                ['name' => 'دانا أسامة ريان', 'gender' => 'female', 'card_id' => '900200032', 'dob' => '2009-12-22', 'phone' => null, 'disabled' => true],
+            ],
+            '900200004' => [ // هناء عماد صيام - مطلقة
+                ['name' => 'إيلاف هناء صيام', 'gender' => 'female', 'card_id' => '900200041', 'dob' => '2018-07-07', 'phone' => null, 'disabled' => false],
+            ],
 
-        // Family members for فاطمة أبو زيد (married)
-        if ($guardian2) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian2->id,
-                    'name' => 'عمر فاطمة أبو زيد',
-                    'gender' => 'male',
-                    'card_id' => '987654322',
-                    'date_of_birth' => '2015-03-12',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian2->id,
-                    'name' => 'ليلى فاطمة أبو زيد',
-                    'gender' => 'female',
-                    'card_id' => '987654323',
-                    'date_of_birth' => '2018-11-05',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
+            // ---- مخيم الصمود ----
+            '900300001' => [ // باسل مروان قديح - متزوج، أكبر عائلة
+                ['name' => 'رشا باسل قديح', 'gender' => 'female', 'card_id' => '900300011', 'dob' => '1984-03-17', 'phone' => '+970599300011', 'disabled' => false],
+                ['name' => 'محمود باسل قديح', 'gender' => 'male', 'card_id' => '900300012', 'dob' => '2007-09-23', 'phone' => null, 'disabled' => false],
+                ['name' => 'سجى باسل قديح', 'gender' => 'female', 'card_id' => '900300013', 'dob' => '2010-01-30', 'phone' => null, 'disabled' => false],
+                ['name' => 'يزن باسل قديح', 'gender' => 'male', 'card_id' => '900300014', 'dob' => '2013-06-06', 'phone' => null, 'disabled' => false],
+                ['name' => 'ملك باسل قديح', 'gender' => 'female', 'card_id' => '900300015', 'dob' => '2019-04-11', 'phone' => null, 'disabled' => false],
+            ],
+            '900300002' => [ // ريم توفيق العطار - متزوجة
+                ['name' => 'جنى ريم العطار', 'gender' => 'female', 'card_id' => '900300021', 'dob' => '2015-08-08', 'phone' => null, 'disabled' => false],
+            ],
+            '900300003' => [], // عادل حسين أبو زايدة - أعزب، بدون أفراد
+            '900300004' => [ // وفاء جمال الحداد - أرملة، من ذوي الإعاقة
+                ['name' => 'إسلام وفاء الحداد', 'gender' => 'male', 'card_id' => '900300041', 'dob' => '2001-02-02', 'phone' => '+970599300041', 'disabled' => false],
+            ],
 
-        // Family members for علي الأحمد (widowed, has children)
-        if ($guardian3) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian3->id,
-                    'name' => 'يوسف علي الأحمد',
-                    'gender' => 'male',
-                    'card_id' => '456789124',
-                    'date_of_birth' => '2005-08-14',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian3->id,
-                    'name' => 'نور علي الأحمد',
-                    'gender' => 'female',
-                    'card_id' => '456789125',
-                    'date_of_birth' => '2008-12-22',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => true,
-                ],
-                [
-                    'guardian_id' => $guardian3->id,
-                    'name' => 'حسام علي الأحمد',
-                    'gender' => 'male',
-                    'card_id' => '456789126',
-                    'date_of_birth' => '2013-04-18',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
+            // ---- مخيم النور ----
+            '900400001' => [ // كريم صلاح النخالة - متزوج
+                ['name' => 'أسماء كريم النخالة', 'gender' => 'female', 'card_id' => '900400011', 'dob' => '1987-06-14', 'phone' => '+970599400011', 'disabled' => false],
+                ['name' => 'زين كريم النخالة', 'gender' => 'male', 'card_id' => '900400012', 'dob' => '2013-10-02', 'phone' => null, 'disabled' => false],
+                ['name' => 'لمى كريم النخالة', 'gender' => 'female', 'card_id' => '900400013', 'dob' => '2017-01-19', 'phone' => null, 'disabled' => false],
+            ],
+            '900400002' => [ // لينا وليد أبو معيلق - متزوجة
+                ['name' => 'تيم لينا أبو معيلق', 'gender' => 'male', 'card_id' => '900400021', 'dob' => '2019-03-27', 'phone' => null, 'disabled' => false],
+                ['name' => 'جنات لينا أبو معيلق', 'gender' => 'female', 'card_id' => '900400022', 'dob' => '2021-12-15', 'phone' => null, 'disabled' => false],
+            ],
+            '900400003' => [ // طارق رياض السقا - مطلق
+                ['name' => 'أنس طارق السقا', 'gender' => 'male', 'card_id' => '900400031', 'dob' => '2014-05-05', 'phone' => null, 'disabled' => true],
+            ],
+            '900400004' => [], // أمل فؤاد بركة - عزباء، بدون أفراد
 
-        // Family members for عائشة النجار (married)
-        if ($guardian4) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian4->id,
-                    'name' => 'محمد عائشة النجار',
-                    'gender' => 'male',
-                    'card_id' => '789123457',
-                    'date_of_birth' => '2014-07-30',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
+            // ---- مخيم الرجاء ----
+            '900500001' => [ // نائل عصام الهور - متزوج
+                ['name' => 'سميرة نائل الهور', 'gender' => 'female', 'card_id' => '900500011', 'dob' => '1982-11-23', 'phone' => '+970599500011', 'disabled' => false],
+                ['name' => 'علاء نائل الهور', 'gender' => 'male', 'card_id' => '900500012', 'dob' => '2005-09-12', 'phone' => null, 'disabled' => false],
+                ['name' => 'رغد نائل الهور', 'gender' => 'female', 'card_id' => '900500013', 'dob' => '2009-02-28', 'phone' => null, 'disabled' => false],
+                ['name' => 'حمزة نائل الهور', 'gender' => 'male', 'card_id' => '900500014', 'dob' => '2014-07-19', 'phone' => null, 'disabled' => false],
+            ],
+            '900500002' => [ // دعاء إياد الأسطل - أرملة، من ذوي الإعاقة، أبناء بالغون
+                ['name' => 'إياد دعاء الأسطل', 'gender' => 'male', 'card_id' => '900500021', 'dob' => '1990-05-16', 'phone' => '+970599500021', 'disabled' => false],
+                ['name' => 'سهى دعاء الأسطل', 'gender' => 'female', 'card_id' => '900500022', 'dob' => '1993-08-08', 'phone' => '+970599500022', 'disabled' => false],
+            ],
+            '900500003' => [], // فادي رامي شبير - أعزب، بدون أفراد
+            '900500004' => [ // سناء محمود اللوح - متزوجة
+                ['name' => 'رهام سناء اللوح', 'gender' => 'female', 'card_id' => '900500041', 'dob' => '2012-09-09', 'phone' => null, 'disabled' => false],
+                ['name' => 'عدي سناء اللوح', 'gender' => 'male', 'card_id' => '900500042', 'dob' => '2016-12-12', 'phone' => null, 'disabled' => false],
+                ['name' => 'نغم سناء اللوح', 'gender' => 'female', 'card_id' => '900500043', 'dob' => '2021-04-04', 'phone' => null, 'disabled' => false],
+            ],
+        ];
 
-        // Family members for خالد الحسيني (married, large family)
-        if ($guardian5) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian5->id,
-                    'name' => 'فاطمة خالد الحسيني',
-                    'gender' => 'female',
-                    'card_id' => '321654988',
-                    'date_of_birth' => '2009-01-15',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian5->id,
-                    'name' => 'عبدالله خالد الحسيني',
-                    'gender' => 'male',
-                    'card_id' => '321654989',
-                    'date_of_birth' => '2011-05-20',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian5->id,
-                    'name' => 'زينب خالد الحسيني',
-                    'gender' => 'female',
-                    'card_id' => '321654990',
-                    'date_of_birth' => '2016-10-08',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian5->id,
-                    'name' => 'حسن خالد الحسيني',
-                    'gender' => 'male',
-                    'card_id' => '321654991',
-                    'date_of_birth' => '2019-12-03',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
+        $createdCount = 0;
 
-        // Family members for أبو محمد الشامي (married, elderly with adult children)
-        if ($guardian6) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian6->id,
-                    'name' => 'محمد أبو الشامي',
-                    'gender' => 'male',
-                    'card_id' => '147258370',
-                    'date_of_birth' => '1995-03-22',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => '+970147258370',
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian6->id,
-                    'name' => 'أم محمد الشامي',
-                    'gender' => 'female',
-                    'card_id' => '147258371',
-                    'date_of_birth' => '1968-07-14',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
+        foreach ($guardians as $guardian) {
+            if (!isset($familyData[$guardian->card_id])) {
+                continue;
+            }
 
-        // Family members for زينب العطار (divorced, single mother)
-        if ($guardian7) {
-            $familyMembers = array_merge($familyMembers, [
-                [
-                    'guardian_id' => $guardian7->id,
-                    'name' => 'ليث زينب العطار',
-                    'gender' => 'male',
-                    'card_id' => '963852742',
-                    'date_of_birth' => '2017-06-11',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-                [
-                    'guardian_id' => $guardian7->id,
-                    'name' => 'رنا زينب العطار',
-                    'gender' => 'female',
-                    'card_id' => '963852743',
-                    'date_of_birth' => '2020-02-28',
-                    'nationality' => 'فلسطيني',
-                    'phone_number' => null,
-                    'is_disabled' => false,
-                ],
-            ]);
-        }
-
-        // Create family members
-        foreach ($familyMembers as $memberData) {
-            FamilyMember::updateOrCreate(
-                ['card_id' => $memberData['card_id']],
-                $memberData
-            );
+            foreach ($familyData[$guardian->card_id] as $member) {
+                FamilyMember::updateOrCreate(
+                    ['card_id' => $member['card_id']],
+                    [
+                        'guardian_id'   => $guardian->id,
+                        'name'          => $member['name'],
+                        'gender'        => $member['gender'],
+                        'card_id'       => $member['card_id'],
+                        'date_of_birth' => $member['dob'],
+                        'nationality'   => 'فلسطيني',
+                        'phone_number'  => $member['phone'],
+                        'is_disabled'   => $member['disabled'],
+                    ]
+                );
+                $createdCount++;
+            }
         }
 
         $this->command->info('FamilyMember seeder completed successfully!');
-        $this->command->info('Created ' . count($familyMembers) . ' family members.');
+        $this->command->info('Created/updated ' . $createdCount . ' family members.');
     }
 }

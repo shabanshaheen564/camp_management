@@ -16,21 +16,24 @@ class AidDistributionSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get existing camps, aid types, and users
         $camps = Camp::all();
         $aidTypes = AidType::all();
-        $users = User::all();
+        $admin = User::where('email', 'admin@camp.org')->first();
 
-        if ($camps->isEmpty() || $aidTypes->isEmpty() || $users->isEmpty()) {
-            $this->command->warn('Missing required data: camps, aid types, or users. Please seed them first.');
+        if ($camps->isEmpty() || $aidTypes->isEmpty() || !$admin) {
+            $this->command->warn('Missing required data: camps, aid types, or admin user. Please seed them first.');
             return;
         }
 
-        // Create sample aid distributions
+        // نجيب كل مخيم بالاسم صراحةً بدل الاعتماد على ترتيب/فهرس، مع سقوط
+        // آمن (fallback) على أول مخيم موجود لو الاسم تغيّر لأي سبب.
+        $campByName = fn (string $name) => $camps->firstWhere('name', $name) ?? $camps->first();
+        $aidTypeByCategory = fn (string $category) => $aidTypes->where('category', $category)->first() ?? $aidTypes->first();
+
         $distributions = [
             [
-                'camp_id' => $camps->first()->id,
-                'aid_type_id' => $aidTypes->where('category', 'food')->first()->id ?? $aidTypes->first()->id,
+                'camp_id' => $campByName('مخيم الأمل - الرمال الغربي')->id,
+                'aid_type_id' => $aidTypeByCategory('food')->id,
                 'available_quantity' => 1000.00,
                 'distributed_quantity' => 450.00,
                 'target_beneficiaries' => 200,
@@ -41,12 +44,12 @@ class AidDistributionSeeder extends Seeder
                 'status' => 'active',
                 'priority' => 'high',
                 'special_notes' => 'توزيع أسبوعي للمواد الغذائية الأساسية',
-                'created_by' => $users->first()->id,
-                'managed_by' => $users->first()->id,
+                'created_by' => $admin->id,
+                'managed_by' => $admin->id,
             ],
             [
-                'camp_id' => $camps->count() > 1 ? $camps->skip(1)->first()->id : $camps->first()->id,
-                'aid_type_id' => $aidTypes->where('category', 'water')->first()->id ?? $aidTypes->skip(1)->first()->id,
+                'camp_id' => $campByName('مخيم الكرامة - الشيخ عجلين')->id,
+                'aid_type_id' => $aidTypeByCategory('water')->id,
                 'available_quantity' => 500.00,
                 'distributed_quantity' => 200.00,
                 'target_beneficiaries' => 150,
@@ -57,12 +60,12 @@ class AidDistributionSeeder extends Seeder
                 'status' => 'active',
                 'priority' => 'urgent',
                 'special_notes' => 'توزيع المياه النظيفة يومياً',
-                'created_by' => $users->first()->id,
-                'managed_by' => $users->first()->id,
+                'created_by' => $admin->id,
+                'managed_by' => $admin->id,
             ],
             [
-                'camp_id' => $camps->first()->id,
-                'aid_type_id' => $aidTypes->where('category', 'medical')->first()->id ?? $aidTypes->skip(2)->first()->id,
+                'camp_id' => $campByName('مخيم الصمود - تل الهوا')->id,
+                'aid_type_id' => $aidTypeByCategory('medical')->id,
                 'available_quantity' => 200.00,
                 'distributed_quantity' => 200.00,
                 'target_beneficiaries' => 100,
@@ -73,12 +76,12 @@ class AidDistributionSeeder extends Seeder
                 'status' => 'completed',
                 'priority' => 'medium',
                 'special_notes' => 'توزيع الأدوية والمستلزمات الطبية',
-                'created_by' => $users->first()->id,
-                'managed_by' => $users->first()->id,
+                'created_by' => $admin->id,
+                'managed_by' => $admin->id,
             ],
             [
-                'camp_id' => $camps->count() > 2 ? $camps->skip(2)->first()->id : $camps->first()->id,
-                'aid_type_id' => $aidTypes->where('category', 'clothing')->first()->id ?? $aidTypes->skip(3)->first()->id,
+                'camp_id' => $campByName('مخيم النور - النصر')->id,
+                'aid_type_id' => $aidTypeByCategory('clothing')->id,
                 'available_quantity' => 300.00,
                 'distributed_quantity' => 0.00,
                 'target_beneficiaries' => 80,
@@ -89,12 +92,12 @@ class AidDistributionSeeder extends Seeder
                 'status' => 'pending',
                 'priority' => 'low',
                 'special_notes' => 'توزيع الملابس الشتوية للعائلات',
-                'created_by' => $users->first()->id,
-                'managed_by' => $users->first()->id,
+                'created_by' => $admin->id,
+                'managed_by' => $admin->id,
             ],
             [
-                'camp_id' => $camps->first()->id,
-                'aid_type_id' => $aidTypes->where('category', 'hygiene')->first()->id ?? $aidTypes->skip(4)->first()->id,
+                'camp_id' => $campByName('مخيم الرجاء - الشاطئ')->id,
+                'aid_type_id' => $aidTypeByCategory('hygiene')->id,
                 'available_quantity' => 150.00,
                 'distributed_quantity' => 75.00,
                 'target_beneficiaries' => 60,
@@ -105,12 +108,12 @@ class AidDistributionSeeder extends Seeder
                 'status' => 'active',
                 'priority' => 'medium',
                 'special_notes' => 'مواد النظافة الشخصية والمنزلية',
-                'created_by' => $users->first()->id,
-                'managed_by' => $users->first()->id,
+                'created_by' => $admin->id,
+                'managed_by' => $admin->id,
             ],
             [
-                'camp_id' => $camps->count() > 1 ? $camps->skip(1)->first()->id : $camps->first()->id,
-                'aid_type_id' => $aidTypes->where('category', 'shelter')->first()->id ?? $aidTypes->skip(5)->first()->id,
+                'camp_id' => $campByName('مخيم الصمود - تل الهوا')->id,
+                'aid_type_id' => $aidTypeByCategory('shelter')->id,
                 'available_quantity' => 50.00,
                 'distributed_quantity' => 0.00,
                 'target_beneficiaries' => 25,
@@ -121,26 +124,36 @@ class AidDistributionSeeder extends Seeder
                 'status' => 'pending',
                 'priority' => 'urgent',
                 'special_notes' => 'مواد البناء وإصلاح المأوى',
-                'created_by' => $users->first()->id,
-                'managed_by' => $users->first()->id,
-            ]
+                'created_by' => $admin->id,
+                'managed_by' => $admin->id,
+            ],
         ];
 
         foreach ($distributions as $distribution) {
-            AidDistribution::create($distribution);
+            AidDistribution::updateOrCreate(
+                [
+                    'camp_id' => $distribution['camp_id'],
+                    'aid_type_id' => $distribution['aid_type_id'],
+                    'distribution_date' => $distribution['distribution_date'],
+                ],
+                $distribution
+            );
         }
 
         $this->command->info('Created ' . count($distributions) . ' aid distributions.');
-        
-        // Generate some family allocations for the first distribution
+
+        // توليد تخصيصات تجريبية للعائلات ضمن أول توزيع فقط، مع حماية كاملة
+        // من أي مخيم غير مرتبط (camp أو camp_id غير صالح).
         $firstDistribution = AidDistribution::first();
-        if ($firstDistribution) {
+        if ($firstDistribution && $firstDistribution->camp) {
             try {
                 $firstDistribution->generateAllocations();
                 $this->command->info('Generated family allocations for the first distribution.');
             } catch (\Exception $e) {
                 $this->command->warn('Could not generate family allocations: ' . $e->getMessage());
             }
+        } else {
+            $this->command->warn('Skipped generating allocations: first distribution has no linked camp.');
         }
     }
 }

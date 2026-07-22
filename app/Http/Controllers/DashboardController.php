@@ -14,7 +14,7 @@ class DashboardController extends Controller
         $totalCamps     = Camp::count();
         $activeCamps    = Camp::where('is_active', true)->count();
         $totalFamilies  = Guardian::count();
-        $totalMembers   = FamilyMember::count();
+        $totalMembers   = FamilyMember::whereHas('guardian')->count();
         $totalDisplaced = $totalFamilies + $totalMembers;
         $totalCapacity  = Camp::sum('capacity');
         $totalAid       = AidDistribution::count();

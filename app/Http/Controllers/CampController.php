@@ -107,8 +107,12 @@ public function update(Request $request, Camp $camp)
 
     public function destroy(Camp $camp)
     {
+        foreach ($camp->guardians as $guardian) {
+            $guardian->familyMembers()->delete();
+        }
+        $camp->guardians()->delete();
         $camp->delete();
-        return back()->with('success', 'تم حذف المخيم بنجاح.');
+        return back()->with('success', 'تم حذف المخيم وجميع عائلاته وأفرادها بنجاح.');
     }
 
     public function toggleStatus(Camp $camp)

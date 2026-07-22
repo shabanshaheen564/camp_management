@@ -16,7 +16,6 @@ class ActivitySeeder extends Seeder
      */
     public function run(): void
     {
-        // Get sample users and camps
         $admin = User::where('email', 'admin@camp.org')->first();
         $supervisor = User::where('email', 'ahmed.supervisor@camp.org')->first();
         $camps = Camp::all();
@@ -27,54 +26,60 @@ class ActivitySeeder extends Seeder
             return;
         }
 
-        // Sample activities for the last few days
+        $campAmal = $camps->firstWhere('name', 'مخيم الأمل - الرمال الغربي') ?? $camps->first();
+        $campNour = $camps->firstWhere('name', 'مخيم النور - النصر') ?? $camps->first();
+        $campRajaa = $camps->firstWhere('name', 'مخيم الرجاء - الشاطئ') ?? $camps->first();
+
+        $guardianHalabi = $guardians->firstWhere('card_id', '900100001') ?? $guardians->first();
+        $guardianAbuAli = $guardians->firstWhere('card_id', '900200001') ?? $guardians->first();
+
         $activities = [
             [
                 'type' => Activity::TYPE_CAMP_CREATED,
-                'title' => 'تم إنشاء مخيم جديد: مخيم الأمل',
-                'description' => 'مخيم جديد في قطاع غزة بسعة 500 شخص',
+                'title' => 'تم إنشاء مخيم جديد: مخيم الأمل - الرمال الغربي',
+                'description' => 'مخيم جديد في حي الرمال الغربي بغزة بسعة 850 شخص',
                 'icon' => 'building',
                 'color' => 'success',
                 'user_id' => $admin->id,
                 'subject_type' => Camp::class,
-                'subject_id' => $camps->first()->id ?? null,
-                'properties' => ['capacity' => 500, 'location' => 'قطاع غزة'],
+                'subject_id' => $campAmal?->id,
+                'properties' => ['capacity' => 850, 'location' => 'حي الرمال الغربي، غرب مدينة غزة'],
                 'created_at' => now()->subMinutes(15)
             ],
             [
                 'type' => Activity::TYPE_GUARDIAN_REGISTERED,
-                'title' => 'تم تسجيل نازح جديد: أحمد محمد السالم',
-                'description' => 'تم تسجيل أحمد محمد السالم في مخيم السلام',
+                'title' => 'تم تسجيل نازح جديد: محمد أحمد الحلبي',
+                'description' => 'تم تسجيل عائلة محمد أحمد الحلبي في مخيم الأمل - الرمال الغربي',
                 'icon' => 'user-plus',
                 'color' => 'success',
                 'user_id' => $supervisor->id ?? $admin->id,
                 'subject_type' => Guardian::class,
-                'subject_id' => $guardians->first()->id ?? null,
-                'properties' => ['camp_name' => 'مخيم السلام', 'family_size' => 4],
+                'subject_id' => $guardianHalabi?->id,
+                'properties' => ['camp_name' => 'مخيم الأمل - الرمال الغربي', 'family_size' => 4],
                 'created_at' => now()->subMinutes(45)
             ],
             [
                 'type' => Activity::TYPE_CAMP_UPDATED,
-                'title' => 'تم تحديث بيانات مخيم النور',
+                'title' => 'تم تحديث بيانات مخيم النور - النصر',
                 'description' => 'تم تحديث معلومات السعة والخدمات المتاحة',
                 'icon' => 'edit',
                 'color' => 'primary',
                 'user_id' => $admin->id,
                 'subject_type' => Camp::class,
-                'subject_id' => $camps->skip(1)->first()->id ?? $camps->first()->id,
+                'subject_id' => $campNour?->id,
                 'properties' => ['updated_fields' => ['capacity', 'services']],
                 'created_at' => now()->subHours(1)->subMinutes(20)
             ],
             [
                 'type' => Activity::TYPE_FAMILY_MEMBER_ADDED,
                 'title' => 'تم إضافة فرد جديد للعائلة',
-                'description' => 'تم إضافة طفل جديد لعائلة محمد أحمد',
+                'description' => 'تم إضافة طفل جديد لعائلة زياد ناصر أبو علي',
                 'icon' => 'users',
                 'color' => 'info',
                 'user_id' => $supervisor->id ?? $admin->id,
                 'subject_type' => Guardian::class,
-                'subject_id' => $guardians->skip(1)->first()->id ?? $guardians->first()->id,
-                'properties' => ['family_member_name' => 'سارة محمد أحمد', 'age' => 8],
+                'subject_id' => $guardianAbuAli?->id,
+                'properties' => ['family_member_name' => 'سيف زياد أبو علي', 'age' => 6],
                 'created_at' => now()->subHours(2)
             ],
             [
@@ -103,13 +108,13 @@ class ActivitySeeder extends Seeder
             ],
             [
                 'type' => Activity::TYPE_CAMP_STATUS_CHANGED,
-                'title' => 'تم تغيير حالة مخيم الرجاء',
-                'description' => 'تم تغيير حالة المخيم إلى ممتلئ',
+                'title' => 'تم تغيير حالة مخيم الرجاء - الشاطئ',
+                'description' => 'تم تغيير حالة المخيم إلى ممتلئ بسبب ارتفاع نسبة الإشغال',
                 'icon' => 'exclamation-triangle',
                 'color' => 'warning',
                 'user_id' => $supervisor->id ?? $admin->id,
                 'subject_type' => Camp::class,
-                'subject_id' => $camps->last()->id ?? $camps->first()->id,
+                'subject_id' => $campRajaa?->id,
                 'properties' => ['old_status' => 'active', 'new_status' => 'full', 'occupancy_rate' => 95],
                 'created_at' => now()->subDay()
             ]

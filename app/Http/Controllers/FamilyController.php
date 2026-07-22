@@ -122,11 +122,12 @@ class FamilyController extends Controller
     return back()->with('success', 'تم التعديل');
 }
 
-  public function destroy(Guardian $family)
-{
-    $family->delete();
-    return back()->with('success', 'تم الحذف');
-}
+    public function destroy(Guardian $family)
+    {
+        $family->familyMembers()->delete();
+        $family->delete();
+        return back()->with('success', 'تم حذف العائلة وجميع أفرادها بنجاح');
+    }
 
     public function storeMember(Request $request, Guardian $guardian)
     {

@@ -10,7 +10,8 @@ use Illuminate\Database\Seeder;
 class CampSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * 5 مخيمات نزوح موزعة في غرب مدينة غزة (الرمال الغربي، الشيخ عجلين،
+     * تل الهوا، النصر، الشاطئ) بإحداثيات تقريبية واقعية لكل منطقة.
      */
     public function run(): void
     {
@@ -18,47 +19,75 @@ class CampSeeder extends Seeder
 
         $camps = [
             [
-                'name' => 'مخيم الأمل',
-                'location' => 'غزة',
-                'latitude' => 31.5017,
-                'longitude' => 34.4668,
-                'capacity' => 1000,
+                'name' => 'مخيم الأمل - الرمال الغربي',
+                'location' => 'حي الرمال الغربي، غرب مدينة غزة',
+                'latitude' => 31.5085,
+                'longitude' => 34.4437,
+                'capacity' => 850,
                 'current_occupancy' => 0,
-                'manager' => 'أحمد محمد',
-                'phone' => '+970123456789',
-                'description' => 'مخيم للنازحين يوفر الخدمات الأساسية والرعاية الصحية',
+                'manager' => 'سامي عودة',
+                'phone' => '+970599100000',
+                'description' => 'مخيم إيواء للنازحين يقدم خدمات الإسكان والغذاء والرعاية الصحية الأولية',
                 'status' => 'active',
                 'is_active' => true,
                 'created_by' => $adminUser?->id,
             ],
             [
-                'name' => 'مخيم النور',
-                'location' => 'رفح',
-                'latitude' => 31.2887,
-                'longitude' => 34.2372,
-                'capacity' => 800,
+                'name' => 'مخيم الكرامة - الشيخ عجلين',
+                'location' => 'حي الشيخ عجلين، غرب مدينة غزة',
+                'latitude' => 31.4928,
+                'longitude' => 34.4462,
+                'capacity' => 620,
                 'current_occupancy' => 0,
-                'manager' => 'فاطمة أحمد',
-                'phone' => '+970987654321',
-                'description' => 'مخيم مؤقت للعائلات النازحة مع خدمات التعليم والصحة',
+                'manager' => 'رنا مطر',
+                'phone' => '+970599200000',
+                'description' => 'مخيم متوسط الحجم يخدم العائلات النازحة من الأحياء المجاورة',
                 'status' => 'active',
                 'is_active' => true,
                 'created_by' => $adminUser?->id,
             ],
             [
-                'name' => 'مخيم السلام',
-                'location' => 'خان يونس',
-                'latitude' => 31.3417,
-                'longitude' => 34.3083,
-                'capacity' => 1200,
+                'name' => 'مخيم الصمود - تل الهوا',
+                'location' => 'حي تل الهوا، غرب مدينة غزة',
+                'latitude' => 31.4957,
+                'longitude' => 34.4534,
+                'capacity' => 900,
                 'current_occupancy' => 0,
-                'manager' => 'محمد حسن',
-                'phone' => '+970555123456',
-                'description' => 'مخيم كبير يستوعب عدد كبير من العائلات مع مرافق متكاملة',
+                'manager' => 'خالد أبو شمالة',
+                'phone' => '+970599300000',
+                'description' => 'أكبر مخيمات المنطقة، يضم مركزاً طبياً ومرافق تعليمية مؤقتة',
                 'status' => 'active',
                 'is_active' => true,
                 'created_by' => $adminUser?->id,
-            ]
+            ],
+            [
+                'name' => 'مخيم النور - النصر',
+                'location' => 'حي النصر، غرب مدينة غزة',
+                'latitude' => 31.5142,
+                'longitude' => 34.4459,
+                'capacity' => 750,
+                'current_occupancy' => 0,
+                'manager' => 'نور حمدان',
+                'phone' => '+970599400000',
+                'description' => 'مخيم يستوعب عائلات نازحة حديثاً مع أولوية لذوي الاحتياجات الخاصة',
+                'status' => 'active',
+                'is_active' => true,
+                'created_by' => $adminUser?->id,
+            ],
+            [
+                'name' => 'مخيم الرجاء - الشاطئ',
+                'location' => 'منطقة الشاطئ، غرب مدينة غزة',
+                'latitude' => 31.5257,
+                'longitude' => 34.4383,
+                'capacity' => 1100,
+                'current_occupancy' => 0,
+                'manager' => 'عمر ياسين',
+                'phone' => '+970599500000',
+                'description' => 'أكبر المخيمات من حيث السعة الاستيعابية، قريب من الساحل',
+                'status' => 'active',
+                'is_active' => true,
+                'created_by' => $adminUser?->id,
+            ],
         ];
 
         foreach ($camps as $campData) {
@@ -68,24 +97,35 @@ class CampSeeder extends Seeder
             );
         }
 
-        // Assign camps to supervisors
-        $this->assignCampsToSupervisors();
+        $this->assignStaffToCamps();
     }
 
-    private function assignCampsToSupervisors()
+    /**
+     * ربط كل مشرف (supervisor) ومدير مخيم (camp_manager) بمخيمه المخصص له
+     * بعد إنشاء المخيمات (لازم تشتغل هاي الدالة بعد ما تكون المخيمات موجودة).
+     */
+    private function assignStaffToCamps(): void
     {
-        $camp1 = Camp::where('name', 'مخيم الأمل')->first();
-        $camp2 = Camp::where('name', 'مخيم النور')->first();
+        $assignments = [
+            'مخيم الأمل - الرمال الغربي'   => ['ahmed.supervisor@camp.org', 'sami.manager@camp.org'],
+            'مخيم الكرامة - الشيخ عجلين'    => ['fatema.supervisor@camp.org', 'rana.manager@camp.org'],
+            'مخيم الصمود - تل الهوا'        => ['mahmoud.supervisor@camp.org', 'khaled.manager@camp.org'],
+            'مخيم النور - النصر'            => ['heba.supervisor@camp.org', 'noor.manager@camp.org'],
+            'مخيم الرجاء - الشاطئ'          => ['yousef.supervisor@camp.org', 'omar.manager@camp.org'],
+        ];
 
-        $supervisor1 = User::where('email', 'ahmed.supervisor@camp.org')->first();
-        $supervisor2 = User::where('email', 'fatema.supervisor@camp.org')->first();
+        foreach ($assignments as $campName => $emails) {
+            $camp = Camp::where('name', $campName)->first();
+            if (!$camp) {
+                continue;
+            }
 
-        if ($camp1 && $supervisor1) {
-            $supervisor1->update(['camp_id' => $camp1->id]);
-        }
-
-        if ($camp2 && $supervisor2) {
-            $supervisor2->update(['camp_id' => $camp2->id]);
+            foreach ($emails as $email) {
+                $user = User::where('email', $email)->first();
+                if ($user) {
+                    $user->update(['camp_id' => $camp->id]);
+                }
+            }
         }
     }
 }
