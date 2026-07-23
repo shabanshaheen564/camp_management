@@ -6,6 +6,7 @@ use App\Models\Camp;
 use App\Models\Guardian;
 use App\Models\FamilyMember;
 use App\Models\AidDistribution;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -35,32 +36,9 @@ class DashboardController extends Controller
 
         $recent_camps = Camp::latest()->take(5)->get();
 
-        $alerts = [];
+        $notifications = Auth::user()->notifications()->latest()->take(3)->get();
+        $unreadNotificationsCount = Auth::user()->unreadNotifications()->count();
 
-        $nearFull = Camp::where('is_active', true)->get()->filter(function ($camp) {
-            $occupied = $camp->guardians()->count()
-                + $camp->guardians()->withCount('familyMembers')->get()->sum('family_members_count');
-            return $camp->capacity > 0 && $occupied >= ($camp->capacity * 0.9);
-        });
-
-        foreach ($nearFull as $camp) {
-            $alerts[] = [
-                'type'    => 'warning',
-                'icon'    => 'exclamation-triangle',
-                'message' => "مخيم {$camp->name} قارب على الامتلاء",
-                'time'    => 'نسبة الإشغال تجاوزت 90%',
-            ];
-        }
-
-        if (empty($alerts)) {
-            $alerts[] = [
-                'type'    => 'info',
-                'icon'    => 'check-circle',
-                'message' => 'جميع المخيمات تعمل بشكل طبيعي',
-                'time'    => 'لا توجد تنبيهات حالية',
-            ];
-        }
-
-        return view('camp_management.dashboard', compact('stats', 'recent_camps', 'alerts'));
+        return view('camp_management.dashboard', compact('stats', 'recent_camps', 'notifications', 'unreadNotificationsCount'));
     }
 }

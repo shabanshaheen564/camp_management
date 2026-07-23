@@ -82,7 +82,7 @@
                     <i class="fas fa-bell" style="color:#ef4444;"></i>
                 </div>
                 <div>
-                    <div class="stat-value" style="color:#ef4444;" id="dashboardNotifCount">0</div>
+                    <div class="stat-value" style="color:#ef4444;" id="dashboardNotifCount">{{ $unreadNotificationsCount }}</div>
                     <div class="stat-label">تنبيهات وتعديلات جديدة</div>
                     <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">اضغط لعرض كل الإشعارات</div>
                 </div>
@@ -195,28 +195,27 @@
             </div>
         </div>
 
-        {{-- تنبيهات --}}
+        {{-- آخر الإشعارات --}}
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title"><i class="fas fa-bell"></i> التنبيهات</h5>
+                <h5 class="card-title"><i class="fas fa-bell"></i> آخر الإشعارات</h5>
             </div>
             <div class="card-body p-0">
-                @forelse($alerts as $alert)
+                @forelse($notifications as $notification)
                 <div style="padding:13px 18px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
-                        background:{{ $alert['type'] === 'warning' ? '#fffbeb' : '#eff6ff' }};">
-                        <i class="fas fa-{{ $alert['icon'] }}"
-                           style="color:{{ $alert['type'] === 'warning' ? '#f59e0b' : '#3b82f6' }}; font-size:0.9rem;"></i>
+                    <div style="width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#eff6ff;">
+                        <i class="fas {{ $notification->data['icon'] ?? 'fa-bell' }}"
+                           style="color:#3b82f6; font-size:0.9rem;"></i>
                     </div>
                     <div>
-                        <div style="font-size:0.85rem; font-weight:600; color:#1e293b;">{{ $alert['message'] }}</div>
-                        <div style="font-size:0.75rem; color:#94a3b8;">{{ $alert['time'] }}</div>
+                        <div style="font-size:0.85rem; font-weight:600; color:#1e293b;">{{ $notification->data['message'] }}</div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">{{ $notification->created_at->diffForHumans() }}</div>
                     </div>
                 </div>
                 @empty
                 <div class="text-center py-4" style="color:#94a3b8; font-size:0.85rem;">
                     <i class="fas fa-check-circle fa-2x mb-2 d-block" style="color:#10b981;"></i>
-                    لا توجد تنبيهات
+                    لا توجد إشعارات جديدة
                 </div>
                 @endforelse
             </div>
