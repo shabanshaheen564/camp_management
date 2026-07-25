@@ -541,7 +541,10 @@ class FamilyMemberController extends Controller
                 }
 
                 $camp = Camp::where('is_active', true)->where(function ($q) use ($campNameOrId) {
-                    $q->where('name', $campNameOrId)->orWhere('id', $campNameOrId);
+                    $q->where('name', $campNameOrId);
+                    if (is_numeric($campNameOrId)) {
+                        $q->orWhere('id', $campNameOrId);
+                    }
                 })->first();
             }
 
