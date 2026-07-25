@@ -298,6 +298,7 @@ class FamilyMemberController extends Controller
             'date_of_birth' => 'تاريخ الميلاد',
             'nationality' => 'الجنسية',
             'relationship' => 'صلة القرابة',
+            'marital_status' => 'الحالة الاجتماعية للفرد',
             'phone_number' => 'الهاتف',
             'is_disabled' => 'ذوي الاحتياجات',
         ];
@@ -368,6 +369,7 @@ class FamilyMemberController extends Controller
             'date_of_birth' => ['birth', 'dob', 'الميلاد', 'تاريخ الميلاد', 'date of birth', 'تاريخ'],
             'nationality' => ['nationality', 'جنسية', 'country', 'دولة'],
             'relationship' => ['relationship', 'صلة', 'قرابة', 'relation', ' Kinship'],
+            'marital_status' => ['marital', 'حالة اجتماعية', 'متزوج', 'غير متزوج', 'social status', 'marital status', 'أرمل', 'مطلق', 'أعزب', 'widowed', 'divorced', 'single', 'separated', 'منفصل'],
             'phone_number' => ['phone', 'هاتف', 'موبايل', 'mobile', 'tel', 'telephone', 'جوال'],
             'is_disabled' => ['disabled', 'احتياجات', 'disability', 'اعاقة', 'مقعد', 'special'],
         ];
@@ -580,7 +582,7 @@ class FamilyMemberController extends Controller
         $data = [
             'guardian_id' => $guardian->id,
             'name' => $name,
-            'marital_status' => in_array($guardian->marital_status, ['married', 'divorced', 'widowed']) ? $guardian->marital_status : 'single',
+            'marital_status' => 'single',
         ];
 
         $memberNationality = null;
@@ -636,6 +638,7 @@ class FamilyMemberController extends Controller
             'gender' => $this->normalizeGender($value),
             'date_of_birth' => $this->normalizeDate($value),
             'is_disabled' => $this->normalizeDisabled($value),
+            'marital_status' => $this->normalizeMaritalStatus($value),
             default => (string) $value,
         };
     }
