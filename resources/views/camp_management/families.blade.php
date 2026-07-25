@@ -345,6 +345,14 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
+                                <select name="marital_status" class="form-select form-select-sm">
+                                    <option value="single">غير متزوج</option>
+                                    <option value="married">متزوج</option>
+                                    <option value="divorced">مطلق</option>
+                                    <option value="widowed">أرمل</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <input type="text" name="phone_number" class="form-control form-control-sm"
                                     placeholder="رقم الهاتف">
                             </div>

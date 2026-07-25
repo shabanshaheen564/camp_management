@@ -157,6 +157,7 @@ class FamilyController extends Controller
             'gender'       => 'required|in:male,female',
             'date_of_birth'=> 'required|date',
             'relationship' => 'nullable|string|max:50',
+            'marital_status' => 'nullable|in:single,married,divorced,widowed',
             'phone_number' => 'nullable|string|max:20',
             'is_disabled'  => 'nullable|boolean',
         ]);
@@ -171,7 +172,7 @@ class FamilyController extends Controller
             'date_of_birth' => $data['date_of_birth'],
             'phone_number'  => $data['phone_number'] ?? null,
             'is_disabled'   => isset($data['is_disabled']) ? 1 : 0,
-            'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
+            'marital_status' => $data['marital_status'] ?? 'single',
         ]);
 
         $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
