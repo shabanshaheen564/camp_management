@@ -144,7 +144,12 @@ class FamilyMemberController extends Controller
 
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $cardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
+            $raw = $row[$guardianCardIdColumn] ?? '';
+            $cardId = trim((string) $raw);
+            if (($cardId === '' || str_contains($cardId, 'E')) && is_numeric($raw)) {
+                $cardId = rtrim(rtrim(number_format((float) $raw, 0, '', ''), '0'), '.');
+            }
+            $cardId = trim($cardId);
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
@@ -301,7 +306,12 @@ class FamilyMemberController extends Controller
 
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $cardId = trim((string) ($row[$autoMapping['guardian_card_id'] ?? ''] ?? ''));
+            $raw = $row[$autoMapping['guardian_card_id'] ?? ''] ?? '';
+            $cardId = trim((string) $raw);
+            if (($cardId === '' || str_contains($cardId, 'E')) && is_numeric($raw)) {
+                $cardId = rtrim(rtrim(number_format((float) $raw, 0, '', ''), '0'), '.');
+            }
+            $cardId = trim($cardId);
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
@@ -426,7 +436,12 @@ class FamilyMemberController extends Controller
 
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $cardId = trim($row[$guardianCardIdColumn] ?? '');
+            $raw = $row[$guardianCardIdColumn] ?? '';
+            $cardId = trim((string) $raw);
+            if (($cardId === '' || str_contains($cardId, 'E')) && is_numeric($raw)) {
+                $cardId = rtrim(rtrim(number_format((float) $raw, 0, '', ''), '0'), '.');
+            }
+            $cardId = trim($cardId);
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
@@ -465,8 +480,23 @@ class FamilyMemberController extends Controller
 
     protected function processMemberRow(array $row, array $mapping, ?string $guardianCardIdColumn, ?string $nameColumn, ?string $campColumn, $existingGuardians, array &$results, array &$newGuardians = [], ?int $forcedCampId = null): void
     {
-        $guardianCardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
-        $name = trim((string) ($row[$nameColumn] ?? ''));
+        $rawGuardianCardId = $row[$guardianCardIdColumn] ?? '';
+        $guardianCardId = trim((string) $rawGuardianCardId);
+        if ($guardianCardId === '' || str_contains($guardianCardId, 'E')) {
+            if (is_numeric($rawGuardianCardId)) {
+                $guardianCardId = rtrim(rtrim(number_format((float) $rawGuardianCardId, 0, '', ''), '0'), '.');
+            }
+        }
+        $guardianCardId = trim($guardianCardId);
+
+        $rawName = $row[$nameColumn] ?? '';
+        $name = trim((string) $rawName);
+        if ($name === '' || str_contains($name, 'E')) {
+            if (is_numeric($rawName)) {
+                $name = rtrim(rtrim(number_format((float) $rawName, 0, '', ''), '0'), '.');
+            }
+        }
+        $name = trim($name);
 
         if ($guardianCardId === '') {
             throw new \InvalidArgumentException('رقم هوية رب الأسرة مفقود');
@@ -491,9 +521,6 @@ class FamilyMemberController extends Controller
             $campNameOrId = trim((string) ($row[$campColumn ?? ''] ?? ''));
 
             if ($forcedCampId !== null) {
-                // استيراد من الموبايل: المخيم محدد سلفاً (مخيم اليوزر الحالي)
-                // بغض النظر عن أي عمود مخيم موجود بالملف، لأسباب أمنية
-                // (ما بنسمح لمدير مخيم يستورد بيانات لمخيم تاني).
                 $camp = Camp::find($forcedCampId);
             } else {
                 if ($campNameOrId === '') {
@@ -509,17 +536,20 @@ class FamilyMemberController extends Controller
                 throw new \InvalidArgumentException('المخيم غير موجود: ' . $campNameOrId);
             }
 
+            $nationalityRaw = trim((string) ($row[$mapping['nationality'] ?? ''] ?? ''));
+            $guardianNationality = $nationalityRaw !== '' ? $nationalityRaw : 'فلسطيني';
+
             $guardian = Guardian::create([
                 'camp_id' => $camp->id,
                 'card_id' => $guardianCardId,
                 'first_name' => $guardianName,
                 'second_name' => '',
                 'third_name' => '',
-                'family_name' => '',
+                'family_name' => $guardianName,
                 'date_of_birth' => '1900-01-01',
                 'gender' => 'male',
                 'marital_status' => $guardianMaritalStatus,
-                'nationality' => 'فلسطيني',
+                'nationality' => $guardianNationality,
                 'family_member_number' => 0,
                 'is_disabled' => 0,
             ]);
@@ -537,6 +567,7 @@ class FamilyMemberController extends Controller
             'marital_status' => in_array($guardian->marital_status, ['married', 'divorced', 'widowed']) ? $guardian->marital_status : 'single',
         ];
 
+        $memberNationality = null;
         foreach ($mapping as $dbField => $excelColumn) {
             if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'guardian_camp', 'name']) || !$excelColumn) continue;
             $rawValue = $row[$excelColumn] ?? '';
@@ -544,6 +575,13 @@ class FamilyMemberController extends Controller
             if ($value === null || $value === '') continue;
 
             $data[$dbField] = $value;
+            if ($dbField === 'nationality') {
+                $memberNationality = $value;
+            }
+        }
+
+        if ($memberNationality === null) {
+            $data['nationality'] = 'فلسطيني';
         }
 
         $memberCardId = $data['card_id'] ?? null;

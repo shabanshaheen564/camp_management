@@ -95,18 +95,36 @@ class FamilyMember extends Model
     protected static function booted()
     {
         static::created(function ($familyMember) {
-            $familyMember->guardian->updateFamilyMemberCount();
-            $familyMember->guardian->camp->updateOccupancy();
+            if (!$familyMember->relationLoaded('guardian')) {
+                $familyMember->load('guardian.camp');
+            }
+            $guardian = $familyMember->guardian;
+            if ($guardian && $guardian->camp) {
+                $guardian->updateFamilyMemberCount();
+                $guardian->camp->updateOccupancy();
+            }
         });
 
         static::updated(function ($familyMember) {
-            $familyMember->guardian->updateFamilyMemberCount();
-            $familyMember->guardian->camp->updateOccupancy();
+            if (!$familyMember->relationLoaded('guardian')) {
+                $familyMember->load('guardian.camp');
+            }
+            $guardian = $familyMember->guardian;
+            if ($guardian && $guardian->camp) {
+                $guardian->updateFamilyMemberCount();
+                $guardian->camp->updateOccupancy();
+            }
         });
 
         static::deleted(function ($familyMember) {
-            $familyMember->guardian->updateFamilyMemberCount();
-            $familyMember->guardian->camp->updateOccupancy();
+            if (!$familyMember->relationLoaded('guardian')) {
+                $familyMember->load('guardian.camp');
+            }
+            $guardian = $familyMember->guardian;
+            if ($guardian && $guardian->camp) {
+                $guardian->updateFamilyMemberCount();
+                $guardian->camp->updateOccupancy();
+            }
         });
     }
 }
