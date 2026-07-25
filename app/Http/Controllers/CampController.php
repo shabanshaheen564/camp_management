@@ -16,6 +16,10 @@ class CampController extends Controller
     {
         $query = Camp::withCount('guardians');
 
+        if (!auth()->user()->isAdmin()) {
+            $query->where('id', auth()->user()->camp_id);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -34,57 +38,57 @@ class CampController extends Controller
         ));
     }
 
-  public function store(Request $request)
-{
-    $request->validate([
-        'name'     => 'required|string|max:255',
-        'location' => 'required|string|max:255',
-        'manager'  => 'required|string|max:255',
-        'phone'    => 'required|string|max:20',
-        'capacity' => 'required|integer|min:1',
-        'status'   => 'required|in:active,inactive,full',
-        'latitude' => 'nullable|numeric',
-        'longitude'=> 'nullable|numeric',
-        'is_active'=> 'required|boolean',
-    ]);
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'location' => 'required|string|max:255',
+            'manager'  => 'required|string|max:255',
+            'phone'    => 'required|string|max:20',
+            'capacity' => 'required|integer|min:1',
+            'status'   => 'required|in:active,inactive,full',
+            'latitude' => 'nullable|numeric',
+            'longitude'=> 'nullable|numeric',
+            'is_active'=> 'required|boolean',
+        ]);
 
-    Camp::create([
-        'name'        => $request->name,
-        'location'    => $request->location,
-        'manager'     => $request->manager,
-        'phone'       => $request->phone,
-        'capacity'    => $request->capacity,
-        'status'      => $request->status,
-        'latitude'    => $request->latitude,
-        'longitude'   => $request->longitude,
-        'is_active'   => $request->is_active,
-        'description' => $request->description,
-        'created_by'  => auth()->id(),
-    ]);
+        Camp::create([
+            'name'        => $request->name,
+            'location'    => $request->location,
+            'manager'     => $request->manager,
+            'phone'       => $request->phone,
+            'capacity'    => $request->capacity,
+            'status'      => $request->status,
+            'latitude'    => $request->latitude,
+            'longitude'   => $request->longitude,
+            'is_active'   => $request->is_active,
+            'description' => $request->description,
+            'created_by'  => auth()->id(),
+        ]);
 
-    $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
-    foreach ($admins as $admin) {
-        $admin->notify(new CampCreatedNotification($request->name, $request->location));
+        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new CampCreatedNotification($request->name, $request->location));
+        }
+
+        return redirect()->route('camps.index')->with('success', 'تمت إضافة المخيم بنجاح');
     }
 
-    return redirect()->route('camps.index')->with('success', 'تمت إضافة المخيم بنجاح');
-}
+    public function update(Request $request, Camp $camp)
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'location' => 'required|string|max:255',
+            'manager'  => 'required|string|max:255',
+            'phone'    => 'required|string|max:20',
+            'capacity' => 'required|integer|min:1',
+            'status'   => 'required|in:active,inactive,full',
+            'latitude' => 'nullable|numeric',
+            'longitude'=> 'nullable|numeric',
+            'is_active'=> 'required|boolean',
+        ]);
 
-public function update(Request $request, Camp $camp)
-{
-    $request->validate([
-        'name'     => 'required|string|max:255',
-        'location' => 'required|string|max:255',
-        'manager'  => 'required|string|max:255',
-        'phone'    => 'required|string|max:20',
-        'capacity' => 'required|integer|min:1',
-        'status'   => 'required|in:active,inactive,full',
-        'latitude' => 'nullable|numeric',
-        'longitude'=> 'nullable|numeric',
-        'is_active'=> 'required|boolean',
-    ]);
-
-    $camp->update([
+        $camp->update([
         'name'        => $request->name,
         'location'    => $request->location,
         'manager'     => $request->manager,
@@ -117,14 +121,17 @@ public function update(Request $request, Camp $camp)
 
     public function toggleStatus(Camp $camp)
     {
+        if (!auth()->user()->canAccessCamp($camp->id)) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $camp->update(['is_active' => !$camp->is_active]);
         $status = $camp->is_active ? 'تم تفعيل المخيم' : 'تم تعليق المخيم';
         return back()->with('success', $status);
     }
-   public function show(Camp $camp)
+    public function show(Camp $camp)
     {
-        // تأكد أن اليوزر يملك هذا المخيم فقط
-        if (auth()->user()->camp_id !== $camp->id) {
+        if (!auth()->user()->canAccessCamp($camp->id)) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
  
@@ -137,7 +144,7 @@ public function update(Request $request, Camp $camp)
      */
     public function statistics(Camp $camp)
     {
-        if (auth()->user()->camp_id !== $camp->id) {
+        if (!auth()->user()->canAccessCamp($camp->id)) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
   
@@ -244,10 +251,6 @@ public function update(Request $request, Camp $camp)
             } catch (\Throwable $e) {
                 $results['errors'][] = "السطر " . ($index + 2) . ": " . $e->getMessage();
             }
-        }
-
-        if ($path) {
-            Storage::delete($path);
         }
 
         return redirect()->route('camps.index')->with('success',

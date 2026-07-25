@@ -17,6 +17,14 @@ class FamilyController extends Controller
     {
         $query = Guardian::with('camp')->withCount('familyMembers');
 
+        if (auth()->user()->isAdmin()) {
+            if ($request->filled('camp_id')) {
+                $query->where('camp_id', $request->camp_id);
+            }
+        } else {
+            $query->where('camp_id', auth()->user()->camp_id);
+        }
+
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function ($q) use ($s) {
@@ -50,7 +58,7 @@ class FamilyController extends Controller
             'full_name'     => 'required|string|max:255',
             'national_id'   => 'nullable|string|max:50',
             'phone'         => 'nullable|string|max:20',
-            'camp_id'       => 'nullable|exists:camps,id',
+            'camp_id'       => 'required|integer|exists:camps,id',
             'gender'        => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
             'marital_status' => 'nullable|in:single,married,divorced,widowed',
@@ -67,9 +75,8 @@ class FamilyController extends Controller
       'phone' => $data['phone'] ?? null,
       'card_id' => $data['national_id'] ?? null,
       'gender' => $data['gender'] ?? 'male',
-      'date_of_birth' => $data['date_of_birth'] ?? null,
+      'date_of_birth' => $data['date_of_birth'] ?? '1900-01-01',
       'family_member_number' => 0,
-
       'nationality' => 'فلسطيني',
       'marital_status' => $data['marital_status'] ?? 'single',
       'is_disabled' => 0
@@ -89,32 +96,36 @@ class FamilyController extends Controller
 
     public function update(Request $request, Guardian $family)
     {
+        if (auth()->user()->camp_id !== $family->camp_id) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $data = $request->validate([
             'full_name'     => 'required|string|max:255',
             'national_id'   => 'nullable|string|max:50',
-            'camp_id'       => 'nullable|exists:camps,id',
+            'camp_id'       => 'required|integer|exists:camps,id',
             'gender'        => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
             'phone'        => 'nullable|string|max:50',
             'marital_status' => 'nullable|in:single,married,divorced,widowed',
         ]);
 
-    $parts = explode(' ', trim($data['full_name']));
+        $parts = explode(' ', trim($data['full_name']));
 
-    $family->update([
-        'camp_id' => $data['camp_id'],
-        'first_name' => $parts[0] ?? '',
-        'second_name' => $parts[1] ?? '',
-        'third_name' => $parts[2] ?? '',
-        'family_name' => $parts[3] ?? '',
-        'card_id' => $data['national_id'] ?? null,
-        'gender' => $data['gender'] ?? 'male',
-        'phone' => $data['phone'] ?? null,
-        'date_of_birth' => $data['date_of_birth'],
-        'marital_status' => $data['marital_status'] ?? 'single',
-    ]);
+        $family->update([
+            'camp_id' => $data['camp_id'],
+            'first_name' => $parts[0] ?? '',
+            'second_name' => $parts[1] ?? '',
+            'third_name' => $parts[2] ?? '',
+            'family_name' => $parts[3] ?? '',
+            'card_id' => $data['national_id'] ?? null,
+            'gender' => $data['gender'] ?? 'male',
+            'phone' => $data['phone'] ?? null,
+            'date_of_birth' => $data['date_of_birth'] ?? $family->date_of_birth,
+            'marital_status' => $data['marital_status'] ?? 'single',
+        ]);
 
-    $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
     foreach ($admins as $admin) {
         $admin->notify(new FamilyUpdatedNotification($family->full_name ?? $family->first_name, $family->camp?->name, $family->card_id));
     }
@@ -124,6 +135,10 @@ class FamilyController extends Controller
 
     public function destroy(Guardian $family)
     {
+        if (auth()->user()->camp_id !== $family->camp_id) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $family->familyMembers()->delete();
         $family->delete();
         return back()->with('success', 'تم حذف العائلة وجميع أفرادها بنجاح');
@@ -131,6 +146,10 @@ class FamilyController extends Controller
 
     public function storeMember(Request $request, Guardian $guardian)
     {
+        if (auth()->user()->camp_id !== $guardian->camp_id) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $data = $request->validate([
             'full_name'    => 'required|string|max:255',
             'card_id'      => 'required|string|max:50|unique:family_members,card_id',
@@ -169,6 +188,10 @@ class FamilyController extends Controller
 
     public function destroyMember(FamilyMember $member)
     {
+        if (auth()->user()->camp_id !== $member->guardian->camp_id) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $member->delete();
         return back()->with('success', 'تم حذف الفرد بنجاح.');
     }

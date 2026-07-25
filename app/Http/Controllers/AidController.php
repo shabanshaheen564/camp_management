@@ -13,12 +13,22 @@ class AidController extends Controller
     {
         $query = AidDistribution::with(['camp', 'aidType']);
 
+        if (auth()->user()->isAdmin()) {
+            if ($request->filled('camp_id')) {
+                $query->where('camp_id', $request->camp_id);
+            }
+        } else {
+            $query->where('camp_id', auth()->user()->camp_id);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('aidType', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            })->orWhereHas('camp', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('aidType', function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%");
+                })->orWhereHas('camp', function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%");
+                });
             });
         }
 
@@ -44,11 +54,20 @@ class AidController extends Controller
 
         $aids = $query->latest()->paginate(10)->withQueryString();
 
-        $totalDistributions = AidDistribution::count();
-        $thisMonth = AidDistribution::whereMonth('distribution_date', now()->month)
-            ->whereYear('distribution_date', now()->year)->count();
-        $completed = AidDistribution::where('status', 'completed')->count();
-        $pending = AidDistribution::where('status', 'pending')->count();
+        if (auth()->user()->isAdmin()) {
+            $totalDistributions = AidDistribution::count();
+            $thisMonth = AidDistribution::whereMonth('distribution_date', now()->month)
+                ->whereYear('distribution_date', now()->year)->count();
+            $completed = AidDistribution::where('status', 'completed')->count();
+            $pending = AidDistribution::where('status', 'pending')->count();
+        } else {
+            $totalDistributions = $query->count();
+            $thisMonth = $query->clone()
+                ->whereMonth('distribution_date', now()->month)
+                ->whereYear('distribution_date', now()->year)->count();
+            $completed = (clone $query)->where('status', 'completed')->count();
+            $pending = (clone $query)->where('status', 'pending')->count();
+        }
 
         $camps = Camp::where('is_active', true)->get();
         $aidTypes = AidType::where('is_active', true)->get();
@@ -60,6 +79,12 @@ class AidController extends Controller
 
     public function store(Request $request)
     {
+        $campId = (int) $request->input('camp_id');
+
+        if (!auth()->user()->canAccessCamp($campId)) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $request->validate([
             'camp_id'           => 'required|exists:camps,id',
             'aid_type_id'       => 'required|exists:aid_types,id',
@@ -87,6 +112,12 @@ class AidController extends Controller
 
     public function update(Request $request, AidDistribution $aid)
     {
+        $campId = (int) $request->input('camp_id');
+
+        if (!auth()->user()->canAccessCamp($campId)) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $request->validate([
             'camp_id'           => 'required|exists:camps,id',
             'aid_type_id'       => 'required|exists:aid_types,id',
@@ -112,6 +143,10 @@ class AidController extends Controller
 
     public function destroy(AidDistribution $aid)
     {
+        if (!auth()->user()->canAccessCamp($aid->camp_id)) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $aid->delete();
         return redirect()->route('aid.index')->with('success', 'تم حذف توزيع المساعدات بنجاح');
     }

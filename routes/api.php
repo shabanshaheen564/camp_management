@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\FamilyMemberController;
+use App\Http\Controllers\NotificationController;
 
 // تسجيل الدخول (بدون Authentication)
 Route::post('/login', [AuthController::class, 'login']);
@@ -26,4 +27,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // أفراد العائلة
     Route::post('/family-members', [FamilyMemberController::class, 'store']);
     Route::delete('/family-members/{member}', [FamilyMemberController::class, 'destroy']);
+
+    // استيراد/تصدير إكسل من التطبيق (جديد)
+    Route::post('/camps/{camp}/guardians/import', [FamilyMemberController::class, 'apiImport']);
+    Route::get('/camps/{camp}/guardians/export', [FamilyMemberController::class, 'apiExport']);
+
+    // الإشعارات من التطبيق (جديد) - نفس NotificationController المستخدم بالويب بالضبط
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 });

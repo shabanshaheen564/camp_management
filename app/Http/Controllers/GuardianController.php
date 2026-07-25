@@ -14,7 +14,7 @@ class GuardianController extends Controller
      */
     public function byCamp(Camp $camp)
     {
-        if (auth()->user()->camp_id !== $camp->id) {
+        if (!auth()->user()->canAccessCamp($camp->id)) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
@@ -35,11 +35,13 @@ class GuardianController extends Controller
             'card_id' => 'required|string|max:50',
             'phone' => 'nullable|string|max:20',
             'family_member_number' => 'nullable|integer|min:0',
-            'date_of_birth' => 'nullable|date',       // ✅ جديد
+            'date_of_birth' => 'required|date',
             'address' => 'nullable|string|max:500',
             'gender' => 'nullable|in:male,female',
             'camp_id' => 'required|integer|exists:camps,id',
             'nationality' => 'required|string|max:255',   // ✅ جديد
+            'marital_status' => 'nullable|in:single,married,divorced,widowed', // ✅ جديد
+            'is_disabled' => 'nullable|boolean', // ✅ جديد
         ]);
 
         // تأكد أن اليوزر يضيف فقط لمخيمه
@@ -68,11 +70,13 @@ class GuardianController extends Controller
             'family_name' => 'sometimes|required|string|max:255',
             'card_id' => 'sometimes|required|string|max:50',
             'phone' => 'nullable|string|max:20',
-            'date_of_birth' => 'nullable|date',       // ✅ جديد
+            'date_of_birth' => 'required|date',
             'address' => 'nullable|string|max:500',
             'family_member_number' => 'nullable|integer|min:0',
             'gender' => 'nullable|in:male,female',
             'nationality' => 'required|string|max:255',   // ✅ جديد
+            'marital_status' => 'nullable|in:single,married,divorced,widowed', // ✅ جديد
+            'is_disabled' => 'nullable|boolean', // ✅ جديد
         ]);
 
         $guardian->update($data);
