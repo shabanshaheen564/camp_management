@@ -164,6 +164,7 @@ class FamilyController extends Controller
         FamilyMember::create([
             'guardian_id'   => $guardian->id,
             'name'          => $data['full_name'],
+            'relationship'  => $data['relationship'] ?? null,
             'card_id'       => $data['card_id'],
             'nationality'   => $data['nationality'],
             'gender'        => $data['gender'],

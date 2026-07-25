@@ -13,62 +13,120 @@ class ReportController extends Controller
 {
     public function index()
     {
-        // إحصاءات عامة
-        $totalCamps    = Camp::where('is_active', true)->count();
-        $totalFamilies = Guardian::count();
-        $totalMembers  = FamilyMember::count();
-        $totalPersons  = $totalFamilies + $totalMembers;
-        $totalAids     = AidDistribution::count();
+        $user = auth()->user();
 
-        // قائمة المخيمات للتصفية
-        $camps = Camp::where('is_active', true)->orderBy('name')->get();
+        if ($user->isAdmin()) {
+            $totalCamps    = Camp::where('is_active', true)->count();
+            $totalFamilies = Guardian::count();
+            $totalMembers  = FamilyMember::count();
+            $totalPersons  = $totalFamilies + $totalMembers;
+            $totalAids     = AidDistribution::count();
 
-        // توزيع النازحين على المخيمات (مخطط دائري)
-        $campsData = Camp::where('is_active', true)
-            ->withCount('guardians')
-            ->orderByDesc('guardians_count')
-            ->take(8)
-            ->get()
-            ->map(fn($c) => [
-                'name'  => $c->name,
-                'count' => $c->guardians_count,
-            ]);
+            $camps = Camp::where('is_active', true)->orderBy('name')->get();
 
-        // المساعدات الموزعة شهرياً آخر 6 أشهر (مخطط أعمدة)
-        $monthlyAids = collect(range(5, 0))->map(function ($i) {
-            $date = now()->subMonths($i);
-            $count = AidDistribution::whereYear('distribution_date', $date->year)
-                ->whereMonth('distribution_date', $date->month)
-                ->count();
-            return [
-                'month' => $date->translatedFormat('M Y'),
-                'count' => $count,
+            $campsData = Camp::where('is_active', true)
+                ->withCount('guardians')
+                ->orderByDesc('guardians_count')
+                ->take(8)
+                ->get()
+                ->map(fn($c) => [
+                    'name'  => $c->name,
+                    'count' => $c->guardians_count,
+                ]);
+
+            $monthlyAids = collect(range(5, 0))->map(function ($i) {
+                $date = now()->subMonths($i);
+                $count = AidDistribution::whereYear('distribution_date', $date->year)
+                    ->whereMonth('distribution_date', $date->month)
+                    ->count();
+                return [
+                    'month' => $date->translatedFormat('M Y'),
+                    'count' => $count,
+                ];
+            });
+
+            $monthlyGrowth = collect(range(5, 0))->map(function ($i) {
+                $date = now()->subMonths($i);
+                $count = Guardian::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+                return [
+                    'month' => $date->translatedFormat('M Y'),
+                    'count' => $count,
+                ];
+            });
+
+            $ageGroups = [
+                'أقل من 18' => FamilyMember::whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
+                '18 - 35' => FamilyMember::whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
+                '36 - 60' => FamilyMember::whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
+                'أكبر من 60' => FamilyMember::whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
             ];
-        });
+        } else {
+            $campId = $user->camp_id;
 
-        // نمو الأعداد شهرياً آخر 6 أشهر (مخطط خطي)
-        $monthlyGrowth = collect(range(5, 0))->map(function ($i) {
-            $date = now()->subMonths($i);
-            $count = Guardian::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
-            return [
-                'month' => $date->translatedFormat('M Y'),
-                'count' => $count,
+            $totalCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
+            $totalFamilies = Guardian::where('camp_id', $campId)->count();
+            $totalMembers  = FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))->count();
+            $totalPersons  = $totalFamilies + $totalMembers;
+            $totalAids     = AidDistribution::where('camp_id', $campId)->count();
+
+            $camps = Camp::where('is_active', true)->where('id', $campId)->orderBy('name')->get();
+
+            $campsData = Camp::where('is_active', true)
+                ->where('id', $campId)
+                ->withCount('guardians')
+                ->orderByDesc('guardians_count')
+                ->take(8)
+                ->get()
+                ->map(fn($c) => [
+                    'name'  => $c->name,
+                    'count' => $c->guardians_count,
+                ]);
+
+            $monthlyAids = collect(range(5, 0))->map(function ($i) use ($campId) {
+                $date = now()->subMonths($i);
+                $count = AidDistribution::where('camp_id', $campId)
+                    ->whereYear('distribution_date', $date->year)
+                    ->whereMonth('distribution_date', $date->month)
+                    ->count();
+                return [
+                    'month' => $date->translatedFormat('M Y'),
+                    'count' => $count,
+                ];
+            });
+
+            $monthlyGrowth = collect(range(5, 0))->map(function ($i) use ($campId) {
+                $date = now()->subMonths($i);
+                $count = Guardian::where('camp_id', $campId)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count();
+                return [
+                    'month' => $date->translatedFormat('M Y'),
+                    'count' => $count,
+                ];
+            });
+
+            $ageGroups = [
+                'أقل من 18' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
+                    ->whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
+                '18 - 35' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
+                    ->whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
+                '36 - 60' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
+                    ->whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
+                'أكبر من 60' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
+                    ->whereNotNull('date_of_birth')
+                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
             ];
-        });
-
-        // توزيع أعمار الأفراد
-       $ageGroups = [
-    'أقل من 18' => FamilyMember::whereNotNull('date_of_birth')
-        ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
-    '18 - 35' => FamilyMember::whereNotNull('date_of_birth')
-        ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
-    '36 - 60' => FamilyMember::whereNotNull('date_of_birth')
-        ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
-    'أكبر من 60' => FamilyMember::whereNotNull('date_of_birth')
-        ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
-];
+        }
 
         return view('camp_management.reports', compact(
             'totalCamps', 'totalFamilies', 'totalPersons', 'totalAids',
@@ -81,16 +139,33 @@ class ReportController extends Controller
      */
     public function printStatistics()
     {
-        $totalCamps    = Camp::where('is_active', true)->count();
-        $totalFamilies = Guardian::count();
-        $totalMembers  = FamilyMember::count();
-        $totalPersons  = $totalFamilies + $totalMembers;
-        $totalAids     = AidDistribution::count();
+        $user = auth()->user();
 
-        $camps = Camp::where('is_active', true)
-            ->withCount('guardians')
-            ->orderBy('name')
-            ->get();
+        if ($user->isAdmin()) {
+            $totalCamps    = Camp::where('is_active', true)->count();
+            $totalFamilies = Guardian::count();
+            $totalMembers  = FamilyMember::count();
+            $totalPersons  = $totalFamilies + $totalMembers;
+            $totalAids     = AidDistribution::count();
+
+            $camps = Camp::where('is_active', true)
+                ->withCount('guardians')
+                ->orderBy('name')
+                ->get();
+        } else {
+            $campId = $user->camp_id;
+            $totalCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
+            $totalFamilies = Guardian::where('camp_id', $campId)->count();
+            $totalMembers  = FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))->count();
+            $totalPersons  = $totalFamilies + $totalMembers;
+            $totalAids     = AidDistribution::where('camp_id', $campId)->count();
+
+            $camps = Camp::where('is_active', true)
+                ->where('id', $campId)
+                ->withCount('guardians')
+                ->orderBy('name')
+                ->get();
+        }
 
         $ageGroups = [
             'أقل من 18' => FamilyMember::whereNotNull('date_of_birth')
@@ -116,7 +191,13 @@ class ReportController extends Controller
      */
     public function exportCamps()
     {
-        $camps = Camp::withCount('guardians')->orderBy('name')->get();
+        $user = auth()->user();
+
+        $query = Camp::withCount('guardians')->orderBy('name');
+        if (!$user->isAdmin()) {
+            $query->where('id', $user->camp_id);
+        }
+        $camps = $query->get();
 
         $filename = 'camps_export_' . now()->format('Ymd_His') . '.csv';
 
@@ -127,26 +208,24 @@ class ReportController extends Controller
 
         $callback = function () use ($camps) {
             $handle = fopen('php://output', 'w');
-            // UTF-8 BOM for Excel compatibility
             fputs($handle, "\xEF\xBB\xBF");
-            // Header row
-fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 'Phone', 'Capacity', 'Status', 'Active', 'Guardians Count', 'Created At']);
-           foreach ($camps as $camp) {
-    fputcsv($handle, [
-        $camp->id,
-        $camp->name,
-        $camp->location ?? '',
-        $camp->latitude ?? '',
-        $camp->longitude ?? '',
-        $camp->manager ?? '',
-        $camp->phone ?? '',
-        $camp->capacity ?? '',
-        $camp->status ?? '',
-        $camp->is_active ? 'Yes' : 'No',
-        $camp->guardians_count,
-        $camp->created_at?->toDateTimeString() ?? '',
-    ]);
-}
+            fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 'Phone', 'Capacity', 'Status', 'Active', 'Guardians Count', 'Created At']);
+            foreach ($camps as $camp) {
+                fputcsv($handle, [
+                    $camp->id,
+                    $camp->name,
+                    $camp->location ?? '',
+                    $camp->latitude ?? '',
+                    $camp->longitude ?? '',
+                    $camp->manager ?? '',
+                    $camp->phone ?? '',
+                    $camp->capacity ?? '',
+                    $camp->status ?? '',
+                    $camp->is_active ? 'Yes' : 'No',
+                    $camp->guardians_count,
+                    $camp->created_at?->toDateTimeString() ?? '',
+                ]);
+            }
 
             fclose($handle);
         };
@@ -159,15 +238,21 @@ fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 
      */
     public function exportFamilies(Request $request)
     {
+        $user = auth()->user();
         $campId = $request->query('camp_id');
-        
+
         $query = Guardian::with('camp');
-        if ($campId) {
-            $query->where('camp_id', $campId);
+        if ($user->isAdmin()) {
+            if ($campId) {
+                $query->where('camp_id', $campId);
+            }
+        } else {
+            $query->where('camp_id', $user->camp_id);
         }
         $families = $query->orderBy('first_name')->get();
 
-        $campName = $campId ? Camp::find($campId)?->name : 'All';
+        $effectiveCampId = $user->isAdmin() ? $campId : $user->camp_id;
+        $campName = $effectiveCampId ? Camp::find($effectiveCampId)?->name : 'All';
         $filename = 'families_' . ($campName ? str_replace(' ', '_', $campName) : 'all') . '_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
@@ -209,17 +294,23 @@ fputcsv($handle, ['ID', 'Name', 'Location', 'Latitude', 'Longitude', 'Manager', 
      */
     public function exportMembers(Request $request)
     {
+        $user = auth()->user();
         $campId = $request->query('camp_id');
 
-        $query = FamilyMember::whereHas('guardian', function ($q) use ($campId) {
-            if ($campId) {
-                $q->where('camp_id', $campId);
+        $query = FamilyMember::whereHas('guardian', function ($q) use ($user, $campId) {
+            if ($user->isAdmin()) {
+                if ($campId) {
+                    $q->where('camp_id', $campId);
+                }
+            } else {
+                $q->where('camp_id', $user->camp_id);
             }
         })->with('guardian');
         
         $members = $query->orderBy('name')->get();
 
-        $campName = $campId ? Camp::find($campId)?->name : 'All';
+        $effectiveCampId = $user->isAdmin() ? $campId : $user->camp_id;
+        $campName = $effectiveCampId ? Camp::find($effectiveCampId)?->name : 'All';
         $filename = 'members_' . ($campName ? str_replace(' ', '_', $campName) : 'all') . '_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [

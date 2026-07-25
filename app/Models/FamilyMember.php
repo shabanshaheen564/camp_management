@@ -14,6 +14,7 @@ class FamilyMember extends Model
     protected $fillable = [
         'guardian_id',
         'name',
+        'relationship',
         'gender',
         'card_id',
         'date_of_birth',

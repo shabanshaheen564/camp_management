@@ -12,13 +12,28 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $totalCamps     = Camp::count();
-        $activeCamps    = Camp::where('is_active', true)->count();
-        $totalFamilies  = Guardian::count();
-        $totalMembers   = FamilyMember::whereHas('guardian')->count();
-        $totalDisplaced = $totalFamilies + $totalMembers;
-        $totalCapacity  = Camp::sum('capacity');
-        $totalAid       = AidDistribution::count();
+        $user = auth()->user();
+
+        if ($user->isAdmin()) {
+            $totalCamps     = Camp::count();
+            $activeCamps    = Camp::where('is_active', true)->count();
+            $totalFamilies  = Guardian::count();
+            $totalMembers   = FamilyMember::whereHas('guardian')->count();
+            $totalDisplaced = $totalFamilies + $totalMembers;
+            $totalCapacity  = Camp::sum('capacity');
+            $totalAid       = AidDistribution::count();
+            $recent_camps   = Camp::latest()->take(5)->get();
+        } else {
+            $campId = $user->camp_id;
+            $totalCamps     = Camp::where('id', $campId)->count();
+            $activeCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
+            $totalFamilies  = Guardian::where('camp_id', $campId)->count();
+            $totalMembers   = FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))->count();
+            $totalDisplaced = $totalFamilies + $totalMembers;
+            $totalCapacity  = Camp::where('id', $campId)->sum('capacity');
+            $totalAid       = AidDistribution::where('camp_id', $campId)->count();
+            $recent_camps   = Camp::where('id', $campId)->latest()->take(5)->get();
+        }
 
         $stats = [
             'total_camps'    => $totalCamps,
@@ -34,10 +49,8 @@ class DashboardController extends Controller
                 : 0,
         ];
 
-        $recent_camps = Camp::latest()->take(5)->get();
-
-        $notifications = Auth::user()->notifications()->latest()->take(3)->get();
-        $unreadNotificationsCount = Auth::user()->unreadNotifications()->count();
+        $notifications = $user->notifications()->latest()->take(3)->get();
+        $unreadNotificationsCount = $user->unreadNotifications()->count();
 
         return view('camp_management.dashboard', compact('stats', 'recent_camps', 'notifications', 'unreadNotificationsCount'));
     }

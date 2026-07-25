@@ -307,6 +307,7 @@
                     {{-- إضافة فرد --}}
                     <form id="addMemberForm" method="POST">
                         @csrf
+                        <input type="hidden" name="_family_id" id="mm_family_id">
                         <div class="row g-2 mb-4 p-3"
                             style="background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
                             <div style="font-weight:700; font-size:0.85rem; color:#475569; margin-bottom:4px; width:100%;">
@@ -486,6 +487,7 @@
             document.getElementById('membersTitle').innerHTML =
                 '<i class="fas fa-users me-2" style="color:#10b981;"></i>أفراد أسرة: ' + familyName;
             document.getElementById('addMemberForm').action = '/families/' + familyId + '/members';
+            document.getElementById('mm_family_id').value = familyId;
 
             fetch('/families/' + familyId + '/members-list')
                 .then(r => r.json())
@@ -540,6 +542,10 @@
                 if (backdrop) backdrop.remove();
             });
         });
+
+        @if ($errors->any() && old('_family_id'))
+            showMembers('{{ old('_family_id') }}', '');
+        @endif
 
         // بحث مباشر بدون ضغط الزر
         (function() {

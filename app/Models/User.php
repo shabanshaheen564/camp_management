@@ -104,13 +104,18 @@ class User extends Authenticatable
         return $this->hasRole('supervisor');
     }
 
+    public function isCampManager()
+    {
+        return $this->hasRole('camp_manager');
+    }
+
     public function canAccessCamp($campId)
     {
         if ($this->isAdmin()) {
             return true;
         }
         
-        if ($this->isSupervisor()) {
+        if ($this->isSupervisor() || $this->isCampManager()) {
             return $this->camp_id == $campId;
         }
         

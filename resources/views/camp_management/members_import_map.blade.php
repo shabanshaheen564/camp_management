@@ -28,7 +28,6 @@
                     أما إذا كانت الحالة الاجتماعية (غير متزوج/أعزب)، فسيتم إضافة الفرد إلى عائلة رب الأسرة الموجود فقط.
                 </div>
             </div>
-            </div>
 
             <div class="table-responsive">
                 <table class="table table-bordered">
@@ -49,7 +48,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <select name="mapping[{{ $field }}]" class="form-select">
+                                    <select name="mapping[{{ $field }}]" class="form-select field-mapping-select" data-field="{{ $field }}">
                                         <option value="">-- لا يوجد --</option>
                                         @foreach($headers as $header)
                                             <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'name']))) ? 'selected' : '' }}>
@@ -60,10 +59,10 @@
                                 </td>
                                 <td>
                                     @php
-                                        $sampleKey = $headers[0] ?? null;
+                                        $sampleKey = $autoMapping[$field] ?? old("mapping.$field") ?? null;
                                         $sample = $sampleKey ? ($rows[0][$sampleKey] ?? '') : '';
                                     @endphp
-                                    <code>{{ $sample }}</code>
+                                    <code class="mapping-sample" data-field="{{ $field }}">{{ $sample }}</code>
                                 </td>
                             </tr>
                         @endforeach
@@ -197,5 +196,18 @@
         </form>
     </div>
 </div>
+
+<script>
+    const firstRowSample = @json($rows[0] ?? []);
+    document.querySelectorAll('.field-mapping-select').forEach(function (select) {
+        select.addEventListener('change', function () {
+            const field = this.dataset.field;
+            const sampleEl = document.querySelector('.mapping-sample[data-field="' + field + '"]');
+            if (sampleEl) {
+                sampleEl.textContent = this.value ? (firstRowSample[this.value] ?? '') : '';
+            }
+        });
+    });
+</script>
 
 @endsection

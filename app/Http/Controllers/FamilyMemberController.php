@@ -391,6 +391,19 @@ class FamilyMemberController extends Controller
                     }
                 }
 
+                // حقول رب الأسرة (guardian_*) لازم تُفضّل الأعمدة اللي بتذكر "رب الأسرة/ولي الأمر"
+                // صراحة، عشان ما تنخلط مع حقل مشابه خاص بالفرد نفسه (مثال: "Marital Status"
+                // الخاص بالفرد مقابل "Guardian Marital Status" الخاص برب الأسرة).
+                if (str_starts_with($field, 'guardian_')) {
+                    $guardianMarkers = ['guardian', 'رب الأسرة', 'رب العائلة', 'ولي الأمر'];
+                    foreach ($guardianMarkers as $marker) {
+                        if (str_contains($headerLower, mb_strtolower($marker, 'UTF-8'))) {
+                            $score += 8;
+                            break;
+                        }
+                    }
+                }
+
                 if ($score > $bestScore) {
                     $bestScore = $score;
                     $bestHeader = $header;
