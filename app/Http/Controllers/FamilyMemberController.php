@@ -18,7 +18,7 @@ class FamilyMemberController extends Controller
      */
     public function byGuardian(Guardian $guardian)
     {
-        if (!auth()->user()->canAccessCamp($guardian->camp_id)) {
+        if (auth()->user()->camp_id !== $guardian->camp_id) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
@@ -34,7 +34,7 @@ class FamilyMemberController extends Controller
         $data = $request->validate([
             'guardian_id'  => 'required|integer|exists:guardians,id',
             'name'         => 'required|string|max:255',
-            'card_id'      => 'required|string|max:50',
+            'card_id'      => 'nullable|string|max:50',
             'gender'       => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
             'phone_number' => 'nullable|string|max:20',
@@ -58,7 +58,8 @@ class FamilyMemberController extends Controller
      */
     public function destroy(FamilyMember $member)
     {
-        if (!auth()->user()->canAccessCamp($member->guardian->camp_id)) {
+        $guardian = Guardian::findOrFail($member->guardian_id);
+        if (auth()->user()->camp_id !== $guardian->camp_id) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
@@ -74,9 +75,16 @@ class FamilyMemberController extends Controller
      *
      * POST /api/camps/{camp}/guardians/import
      */
-    public function apiImport(Request $request, Camp $camp)
+    /**
+     * الخطوة 1: رفع الملف وقراءته وإرجاع الأعمدة + اقتراح تلقائي للمطابقة
+     * (بدون حفظ أي شي بقاعدة البيانات بعد) - نفس منطق importPreview
+     * بالويب بالضبط، بس بيرجع JSON للتطبيق بدل صفحة Blade.
+     *
+     * POST /api/camps/{camp}/guardians/import/preview
+     */
+    public function apiImportPreview(Request $request, Camp $camp)
     {
-        if (!auth()->user()->canAccessCamp($camp->id)) {
+        if (auth()->user()->camp_id !== $camp->id) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
@@ -118,6 +126,8 @@ class FamilyMemberController extends Controller
             return response()->json(['message' => 'الملف فارغ أو تعذّرت قراءته'], 422);
         }
 
+        // ملاحظة: guardian_camp مش موجود هون قصداً، لأنه بالموبايل المخيم
+        // محدد سلفاً (مخيم اليوزر الحالي) ومش قابل للتغيير من الملف.
         $dbFields = [
             'guardian_card_id' => 'رقم هوية رب الأسرة',
             'guardian_name' => 'اسم رب الأسرة',
@@ -133,23 +143,67 @@ class FamilyMemberController extends Controller
 
         $autoMapping = $this->buildAutoMapping($headers, $dbFields);
 
-        $guardianCardIdColumn = $autoMapping['guardian_card_id'] ?? null;
-        $nameColumn = $autoMapping['name'] ?? null;
+        $guardianCardIds = [];
+        foreach ($rows as $row) {
+            $cardId = trim((string) ($row[$autoMapping['guardian_card_id'] ?? ''] ?? ''));
+            if ($cardId !== '') {
+                $guardianCardIds[] = $cardId;
+            }
+        }
 
-        if (!$guardianCardIdColumn || !$nameColumn) {
-            return response()->json([
-                'message' => 'تعذّر التعرف على أعمدة الملف تلقائياً. تأكد من وجود عمود لرقم هوية رب الأسرة وعمود لاسم الفرد.',
-            ], 422);
+        $guardians = Guardian::withTrashed()
+            ->whereIn('card_id', array_unique($guardianCardIds))
+            ->where('camp_id', $camp->id)
+            ->get()
+            ->keyBy('card_id');
+
+        $newGuardianCardIds = array_values(array_diff(array_unique($guardianCardIds), $guardians->keys()->all()));
+
+        return response()->json([
+            'headers' => array_values($headers),
+            'rows' => $rows,
+            'db_fields' => $dbFields,
+            'auto_mapping' => $autoMapping,
+            'new_guardian_card_ids' => $newGuardianCardIds,
+            'existing_guardian_card_ids' => $guardians->keys()->values(),
+            'total_rows' => count($rows),
+        ]);
+    }
+
+    /**
+     * الخطوة 2: تنفيذ الاستيراد الفعلي بعد ما المستخدم يأكّد/يعدّل المطابقة
+     * بالتطبيق - نفس منطق importExecute بالويب بالضبط.
+     *
+     * POST /api/camps/{camp}/guardians/import/execute
+     * body: { mapping: {field: header}, rows: [...] }
+     */
+    public function apiImportExecute(Request $request, Camp $camp)
+    {
+        if (auth()->user()->camp_id !== $camp->id) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $data = $request->validate([
+            'mapping' => 'required|array',
+            'rows' => 'required|array',
+        ]);
+
+        $mapping = $data['mapping'];
+        $rows = $data['rows'];
+
+        $guardianCardIdColumn = $mapping['guardian_card_id'] ?? null;
+        $nameColumn = $mapping['name'] ?? null;
+
+        if (!$guardianCardIdColumn) {
+            return response()->json(['message' => 'يرجى تحديد عمود رقم هوية رب الأسرة'], 422);
+        }
+        if (!$nameColumn) {
+            return response()->json(['message' => 'يرجى تحديد عمود اسم الفرد'], 422);
         }
 
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $raw = $row[$guardianCardIdColumn] ?? '';
-            $cardId = trim((string) $raw);
-            if (($cardId === '' || str_contains($cardId, 'E')) && is_numeric($raw)) {
-                $cardId = rtrim(rtrim(number_format((float) $raw, 0, '', ''), '0'), '.');
-            }
-            $cardId = trim($cardId);
+            $cardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
@@ -166,7 +220,7 @@ class FamilyMemberController extends Controller
 
         foreach ($rows as $index => $row) {
             try {
-                $this->processMemberRow($row, $autoMapping, $guardianCardIdColumn, $nameColumn, null, $existingGuardians, $results, $newGuardians, $camp->id);
+                $this->processMemberRow($row, $mapping, $guardianCardIdColumn, $nameColumn, null, $existingGuardians, $results, $newGuardians, $camp->id);
             } catch (\Throwable $e) {
                 $results['errors'][] = 'السطر ' . ($index + 2) . ': ' . $e->getMessage();
             }
@@ -198,7 +252,7 @@ class FamilyMemberController extends Controller
      */
     public function apiExport(Camp $camp)
     {
-        if (!auth()->user()->canAccessCamp($camp->id)) {
+        if (auth()->user()->camp_id !== $camp->id) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
@@ -298,7 +352,6 @@ class FamilyMemberController extends Controller
             'date_of_birth' => 'تاريخ الميلاد',
             'nationality' => 'الجنسية',
             'relationship' => 'صلة القرابة',
-            'marital_status' => 'الحالة الاجتماعية للفرد',
             'phone_number' => 'الهاتف',
             'is_disabled' => 'ذوي الاحتياجات',
         ];
@@ -307,24 +360,13 @@ class FamilyMemberController extends Controller
 
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $raw = $row[$autoMapping['guardian_card_id'] ?? ''] ?? '';
-            $cardId = trim((string) $raw);
-            if (($cardId === '' || str_contains($cardId, 'E')) && is_numeric($raw)) {
-                $cardId = rtrim(rtrim(number_format((float) $raw, 0, '', ''), '0'), '.');
-            }
-            $cardId = trim($cardId);
+            $cardId = trim((string) ($row[$autoMapping['guardian_card_id'] ?? ''] ?? ''));
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
         }
 
-        $userCampIds = auth()->user()->isAdmin()
-            ? Camp::pluck('id')->all()
-            : [auth()->user()->camp_id];
-
-        $guardians = Guardian::withTrashed()
-            ->whereIn('card_id', array_unique($guardianCardIds))
-            ->when(!auth()->user()->isAdmin(), fn($q) => $q->whereIn('camp_id', $userCampIds))
+        $guardians = Guardian::withTrashed()->whereIn('card_id', array_unique($guardianCardIds))
             ->with('camp')
             ->get()
             ->keyBy('card_id');
@@ -369,7 +411,6 @@ class FamilyMemberController extends Controller
             'date_of_birth' => ['birth', 'dob', 'الميلاد', 'تاريخ الميلاد', 'date of birth', 'تاريخ'],
             'nationality' => ['nationality', 'جنسية', 'country', 'دولة'],
             'relationship' => ['relationship', 'صلة', 'قرابة', 'relation', ' Kinship'],
-            'marital_status' => ['marital', 'حالة اجتماعية', 'متزوج', 'غير متزوج', 'social status', 'marital status', 'أرمل', 'مطلق', 'أعزب', 'widowed', 'divorced', 'single', 'separated', 'منفصل'],
             'phone_number' => ['phone', 'هاتف', 'موبايل', 'mobile', 'tel', 'telephone', 'جوال'],
             'is_disabled' => ['disabled', 'احتياجات', 'disability', 'اعاقة', 'مقعد', 'special'],
         ];
@@ -390,19 +431,6 @@ class FamilyMemberController extends Controller
                         $score += 5;
                     } elseif (str_contains($keywordLower, $headerLower)) {
                         $score += 3;
-                    }
-                }
-
-                // حقول رب الأسرة (guardian_*) لازم تُفضّل الأعمدة اللي بتذكر "رب الأسرة/ولي الأمر"
-                // صراحة، عشان ما تنخلط مع حقل مشابه خاص بالفرد نفسه (مثال: "Marital Status"
-                // الخاص بالفرد مقابل "Guardian Marital Status" الخاص برب الأسرة).
-                if (str_starts_with($field, 'guardian_')) {
-                    $guardianMarkers = ['guardian', 'رب الأسرة', 'رب العائلة', 'ولي الأمر'];
-                    foreach ($guardianMarkers as $marker) {
-                        if (str_contains($headerLower, mb_strtolower($marker, 'UTF-8'))) {
-                            $score += 8;
-                            break;
-                        }
                     }
                 }
 
@@ -451,22 +479,13 @@ class FamilyMemberController extends Controller
 
         $guardianCardIds = [];
         foreach ($rows as $row) {
-            $raw = $row[$guardianCardIdColumn] ?? '';
-            $cardId = trim((string) $raw);
-            if (($cardId === '' || str_contains($cardId, 'E')) && is_numeric($raw)) {
-                $cardId = rtrim(rtrim(number_format((float) $raw, 0, '', ''), '0'), '.');
-            }
-            $cardId = trim($cardId);
+            $cardId = trim($row[$guardianCardIdColumn] ?? '');
             if ($cardId !== '') {
                 $guardianCardIds[] = $cardId;
             }
         }
 
-        $existingGuardians = Guardian::withTrashed()
-            ->whereIn('card_id', array_unique($guardianCardIds))
-            ->when(!auth()->user()->isAdmin(), fn($q) => $q->where('camp_id', auth()->user()->camp_id))
-            ->get()
-            ->keyBy('card_id');
+        $existingGuardians = Guardian::withTrashed()->whereIn('card_id', array_unique($guardianCardIds))->get()->keyBy('card_id');
 
         $results = ['created' => 0, 'updated' => 0, 'errors' => []];
         $newGuardians = [];
@@ -495,23 +514,8 @@ class FamilyMemberController extends Controller
 
     protected function processMemberRow(array $row, array $mapping, ?string $guardianCardIdColumn, ?string $nameColumn, ?string $campColumn, $existingGuardians, array &$results, array &$newGuardians = [], ?int $forcedCampId = null): void
     {
-        $rawGuardianCardId = $row[$guardianCardIdColumn] ?? '';
-        $guardianCardId = trim((string) $rawGuardianCardId);
-        if ($guardianCardId === '' || str_contains($guardianCardId, 'E')) {
-            if (is_numeric($rawGuardianCardId)) {
-                $guardianCardId = rtrim(rtrim(number_format((float) $rawGuardianCardId, 0, '', ''), '0'), '.');
-            }
-        }
-        $guardianCardId = trim($guardianCardId);
-
-        $rawName = $row[$nameColumn] ?? '';
-        $name = trim((string) $rawName);
-        if ($name === '' || str_contains($name, 'E')) {
-            if (is_numeric($rawName)) {
-                $name = rtrim(rtrim(number_format((float) $rawName, 0, '', ''), '0'), '.');
-            }
-        }
-        $name = trim($name);
+        $guardianCardId = trim((string) ($row[$guardianCardIdColumn] ?? ''));
+        $name = trim((string) ($row[$nameColumn] ?? ''));
 
         if ($guardianCardId === '') {
             throw new \InvalidArgumentException('رقم هوية رب الأسرة مفقود');
@@ -536,6 +540,9 @@ class FamilyMemberController extends Controller
             $campNameOrId = trim((string) ($row[$campColumn ?? ''] ?? ''));
 
             if ($forcedCampId !== null) {
+                // استيراد من الموبايل: المخيم محدد سلفاً (مخيم اليوزر الحالي)
+                // بغض النظر عن أي عمود مخيم موجود بالملف، لأسباب أمنية
+                // (ما بنسمح لمدير مخيم يستورد بيانات لمخيم تاني).
                 $camp = Camp::find($forcedCampId);
             } else {
                 if ($campNameOrId === '') {
@@ -543,10 +550,7 @@ class FamilyMemberController extends Controller
                 }
 
                 $camp = Camp::where('is_active', true)->where(function ($q) use ($campNameOrId) {
-                    $q->where('name', $campNameOrId);
-                    if (is_numeric($campNameOrId)) {
-                        $q->orWhere('id', $campNameOrId);
-                    }
+                    $q->where('name', $campNameOrId)->orWhere('id', $campNameOrId);
                 })->first();
             }
 
@@ -554,20 +558,17 @@ class FamilyMemberController extends Controller
                 throw new \InvalidArgumentException('المخيم غير موجود: ' . $campNameOrId);
             }
 
-            $nationalityRaw = trim((string) ($row[$mapping['nationality'] ?? ''] ?? ''));
-            $guardianNationality = $nationalityRaw !== '' ? $nationalityRaw : 'فلسطيني';
-
             $guardian = Guardian::create([
                 'camp_id' => $camp->id,
                 'card_id' => $guardianCardId,
                 'first_name' => $guardianName,
                 'second_name' => '',
                 'third_name' => '',
-                'family_name' => $guardianName,
+                'family_name' => '',
                 'date_of_birth' => '1900-01-01',
                 'gender' => 'male',
                 'marital_status' => $guardianMaritalStatus,
-                'nationality' => $guardianNationality,
+                'nationality' => 'فلسطيني',
                 'family_member_number' => 0,
                 'is_disabled' => 0,
             ]);
@@ -582,10 +583,9 @@ class FamilyMemberController extends Controller
         $data = [
             'guardian_id' => $guardian->id,
             'name' => $name,
-            'marital_status' => 'single',
+            'marital_status' => in_array($guardian->marital_status, ['married', 'divorced', 'widowed']) ? $guardian->marital_status : 'single',
         ];
 
-        $memberNationality = null;
         foreach ($mapping as $dbField => $excelColumn) {
             if (in_array($dbField, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'guardian_camp', 'name']) || !$excelColumn) continue;
             $rawValue = $row[$excelColumn] ?? '';
@@ -593,13 +593,6 @@ class FamilyMemberController extends Controller
             if ($value === null || $value === '') continue;
 
             $data[$dbField] = $value;
-            if ($dbField === 'nationality') {
-                $memberNationality = $value;
-            }
-        }
-
-        if ($memberNationality === null) {
-            $data['nationality'] = 'فلسطيني';
         }
 
         $memberCardId = $data['card_id'] ?? null;
@@ -638,7 +631,6 @@ class FamilyMemberController extends Controller
             'gender' => $this->normalizeGender($value),
             'date_of_birth' => $this->normalizeDate($value),
             'is_disabled' => $this->normalizeDisabled($value),
-            'marital_status' => $this->normalizeMaritalStatus($value),
             default => (string) $value,
         };
     }

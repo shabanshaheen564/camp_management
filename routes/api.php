@@ -28,8 +28,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/family-members', [FamilyMemberController::class, 'store']);
     Route::delete('/family-members/{member}', [FamilyMemberController::class, 'destroy']);
 
-    // استيراد/تصدير إكسل من التطبيق (جديد)
-    Route::post('/camps/{camp}/guardians/import', [FamilyMemberController::class, 'apiImport']);
+    // استيراد/تصدير إكسل من التطبيق (جديد) - خطوتين زي الويب بالظبط
+    Route::post('/camps/{camp}/guardians/import/preview', [FamilyMemberController::class, 'apiImportPreview']);
+    Route::post('/camps/{camp}/guardians/import/execute', [FamilyMemberController::class, 'apiImportExecute']);
     Route::get('/camps/{camp}/guardians/export', [FamilyMemberController::class, 'apiExport']);
 
     // الإشعارات من التطبيق (جديد) - نفس NotificationController المستخدم بالويب بالضبط
