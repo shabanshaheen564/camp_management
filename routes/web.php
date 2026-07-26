@@ -42,6 +42,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/families', [FamilyController::class, 'store'])->middleware('permission:guardian.create')->name('families.store');
     Route::match(['put', 'patch'], '/families/{family}', [FamilyController::class, 'update'])->middleware('permission:guardian.update')->name('families.update');
     Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->middleware('permission:guardian.delete')->name('families.destroy');
+    Route::get('/families-trash', [FamilyController::class, 'trash'])->middleware('permission:guardian.view-trash')->name('families.trash');
+    Route::patch('/families-trash/{id}/restore', [FamilyController::class, 'restore'])->middleware('permission:guardian.restore')->name('families.restore');
+    Route::delete('/families-trash/{id}/force-delete', [FamilyController::class, 'forceDelete'])->middleware('permission:guardian.force-delete')->name('families.force-delete');
     Route::get('/families/{guardian}/members-list', [FamilyController::class, 'getMembersList'])->name('families.members-list');
     Route::post('/families/{guardian}/members', [FamilyController::class, 'storeMember'])->middleware('permission:family_member.create')->name('families.store-member');
     Route::delete('/families/members/{member}', [FamilyController::class, 'destroyMember'])->middleware('permission:family_member.delete')->name('families.destroy-member');

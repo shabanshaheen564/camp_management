@@ -25,9 +25,16 @@
         </a>
 
         <a href="{{ route('families.index') }}"
-            class="nav-link-item {{ request()->routeIs('families.*') ? 'active' : '' }}">
+            class="nav-link-item {{ request()->routeIs('families.index') ? 'active' : '' }}">
             <i class="fas fa-users"></i>
             العائلات والأفراد
+        </a>
+
+        <a href="{{ route('families.trash') }}"
+            class="nav-link-item {{ request()->routeIs('families.trash') ? 'active' : '' }}"
+            style="padding-right:2.2rem; font-size:0.85rem; opacity:0.85;">
+            <i class="fas fa-trash" style="font-size:0.8rem;"></i>
+            سلة محذوفات العائلات
         </a>
 
         <a href="{{ route('aid.index') }}" class="nav-link-item {{ request()->routeIs('aid.*') ? 'active' : '' }}">
