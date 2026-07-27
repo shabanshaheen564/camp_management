@@ -34,6 +34,7 @@ class FamilyMemberController extends Controller
         $data = $request->validate([
             'guardian_id'  => 'required|integer|exists:guardians,id',
             'name'         => 'required|string|max:255',
+            'relationship' => 'nullable|string|max:255',
             'card_id'      => 'nullable|string|max:50',
             'gender'       => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
@@ -115,8 +116,9 @@ class FamilyMemberController extends Controller
             }
         } else {
             if ($xlsx = SimpleXLSX::parse($path)) {
-                $headers = $xlsx->headers()[0];
-                foreach ($xlsx->rows() as $row) {
+                $allRows = $xlsx->rows();
+                $headers = array_shift($allRows);
+                foreach ($allRows as $row) {
                     $rows[] = array_combine($headers, $row);
                 }
             }
@@ -334,8 +336,9 @@ class FamilyMemberController extends Controller
             }
         } else {
             if ($xlsx = SimpleXLSX::parse($path)) {
-                $headers = $xlsx->headers()[0];
-                foreach ($xlsx->rows() as $row) {
+                $allRows = $xlsx->rows();
+                $headers = array_shift($allRows);
+                foreach ($allRows as $row) {
                     $rows[] = array_combine($headers, $row);
                 }
             }

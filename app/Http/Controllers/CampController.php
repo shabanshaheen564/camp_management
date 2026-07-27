@@ -199,8 +199,9 @@ class CampController extends Controller
             }
         } else {
             if ($xlsx = SimpleXLSX::parse($path)) {
-                $headers = $xlsx->headers()[0];
-                foreach ($xlsx->rows() as $row) {
+                $allRows = $xlsx->rows();
+                $headers = array_shift($allRows);
+                foreach ($allRows as $row) {
                     $rows[] = array_combine($headers, $row);
                 }
             }
