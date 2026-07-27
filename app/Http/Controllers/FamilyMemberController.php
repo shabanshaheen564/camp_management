@@ -419,6 +419,7 @@ class FamilyMemberController extends Controller
         ];
 
         foreach ($dbFields as $field => $label) {
+            $isGuardianField = str_starts_with($field, 'guardian_');
             $bestHeader = '';
             $bestScore = 0;
 
@@ -434,6 +435,21 @@ class FamilyMemberController extends Controller
                         $score += 5;
                     } elseif (str_contains($keywordLower, $headerLower)) {
                         $score += 3;
+                    }
+                }
+
+                // حقول رب الأسرة (guardian_*) ممكن تتشابه أعمدتها مع عمود عام
+                // بيخص الفرد نفسه (مثلاً Marital Status و Guardian Marital Status
+                // بنفس الملف). لو العمود فيه إشارة صريحة إنه خاص برب الأسرة،
+                // منفضّله على أي عمود عام حتى لو أخد نقاط أعلى بالتطابق الحرفي.
+                if ($isGuardianField && $score > 0) {
+                    $hasGuardianMarker = str_contains($headerLower, 'guardian')
+                        || str_contains($headerLower, 'رب الأسرة')
+                        || str_contains($headerLower, 'رب أسرة')
+                        || str_contains($headerLower, 'ولي الأمر')
+                        || str_contains($headerLower, 'parent');
+                    if ($hasGuardianMarker) {
+                        $score += 8;
                     }
                 }
 
