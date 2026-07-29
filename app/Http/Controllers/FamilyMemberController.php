@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use SimpleXLSX;
 use Shuchkin\SimpleXLSXGen;
+use App\Notifications\FamilyCreatedNotification;
 
 class FamilyMemberController extends Controller
 {
