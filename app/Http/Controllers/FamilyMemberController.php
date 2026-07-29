@@ -8,7 +8,7 @@ use App\Models\Guardian;
 use App\Models\User;
 use Illuminate\Http\Request;
 use SimpleXLSX;
-use App\Notifications\FamilyCreatedNotification;
+use Shuchkin\SimpleXLSXGen;
 
 class FamilyMemberController extends Controller
 {
@@ -252,50 +252,45 @@ class FamilyMemberController extends Controller
      *
      * GET /api/camps/{camp}/guardians/export
      */
-    public function apiExport(Camp $camp)
-    {
-        if (auth()->user()->camp_id !== $camp->id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
-
-        $members = FamilyMember::whereHas('guardian', function ($q) use ($camp) {
-            $q->where('camp_id', $camp->id);
-        })->with('guardian')->orderBy('name')->get();
-
-        $filename = 'members_' . str_replace(' ', '_', $camp->name) . '_' . now()->format('Ymd_His') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($members) {
-            $handle = fopen('php://output', 'w');
-            fputs($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['ID', 'الاسم', 'رقم البطاقة', 'الجنس', 'تاريخ الميلاد', 'الجنسية', 'الهاتف', 'ذوي الإعاقة', 'الحالة الاجتماعية', 'رب الأسرة', 'رقم هوية رب الأسرة']);
-
-            foreach ($members as $member) {
-                fputcsv($handle, [
-                    $member->id,
-                    $member->name,
-                    $member->card_id ?? '',
-                    $member->gender ?? '',
-                    optional($member->date_of_birth)->format('Y-m-d') ?? '',
-                    $member->nationality ?? '',
-                    $member->phone_number ?? '',
-                    $member->is_disabled ? 'نعم' : 'لا',
-                    $member->marital_status ?? '',
-                    $member->guardian?->full_name ?? '',
-                    $member->guardian?->card_id ?? '',
-                ]);
-            }
-
-            fclose($handle);
-        };
-
-        return response()->stream($callback, 200, $headers);
+   public function apiExport(Camp $camp)
+{
+    if (auth()->user()->camp_id !== $camp->id) {
+        return response()->json(['message' => 'غير مصرح'], 403);
     }
 
+    $members = FamilyMember::whereHas('guardian', function ($q) use ($camp) {
+        $q->where('camp_id', $camp->id);
+    })->with('guardian')->orderBy('name')->get();
+
+    $filename = 'members_' . str_replace(' ', '_', $camp->name) . '_' . now()->format('Ymd_His') . '.xlsx';
+
+    $rows = [
+        ['ID', 'الاسم', 'رقم البطاقة', 'الجنس', 'تاريخ الميلاد', 'الجنسية', 'الهاتف', 'ذوي الإعاقة', 'الحالة الاجتماعية', 'رب الأسرة', 'رقم هوية رب الأسرة'],
+    ];
+
+    foreach ($members as $member) {
+        $rows[] = [
+            $member->id,
+            $member->name,
+            $member->card_id ?? '',
+            $member->gender ?? '',
+            optional($member->date_of_birth)->format('Y-m-d') ?? '',
+            $member->nationality ?? '',
+            $member->phone_number ?? '',
+            $member->is_disabled ? 'نعم' : 'لا',
+            $member->marital_status ?? '',
+            $member->guardian?->full_name ?? '',
+            $member->guardian?->card_id ?? '',
+        ];
+    }
+
+    $xlsx = SimpleXLSXGen::fromArray($rows);
+
+    return response((string) $xlsx, 200, [
+        'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+    ]);
+}
     /**
      * Show members import form (redirects to families index since we use modal).
      */
