@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PgBoolean;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -94,7 +95,7 @@ class Guardian extends Model
 
     public function scopeDisabled($query, bool $disabled = true)
     {
-        return $query->where('is_disabled', $disabled);
+        return PgBoolean::where($query, $this->getTable().'.is_disabled', $disabled);
     }
 
     public function scopeByAge($query, int $minAge = null, int $maxAge = null)

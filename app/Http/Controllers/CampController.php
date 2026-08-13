@@ -30,7 +30,7 @@ class CampController extends Controller
 
         $camps        = $query->latest()->paginate(10);
         $totalCamps   = Camp::count();
-        $activeCamps  = Camp::where('is_active', true)->count();
+        $activeCamps  = Camp::active()->count();
         $totalCapacity = Camp::sum('capacity');
 
         return view('camp_management.camps', compact(

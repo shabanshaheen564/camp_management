@@ -551,7 +551,7 @@ class FamilyMemberController extends Controller
                     throw new \InvalidArgumentException('اسم المخيم مفقود');
                 }
 
-                $camp = Camp::where('is_active', true)->where(function ($q) use ($campNameOrId) {
+                $camp = Camp::active()->where(function ($q) use ($campNameOrId) {
                     $q->where('name', $campNameOrId);
                     if (is_numeric($campNameOrId)) {
                         $q->orWhere('id', $campNameOrId);

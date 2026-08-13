@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PgBoolean;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -26,6 +27,6 @@ class Hospital extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return PgBoolean::where($query, $this->getTable().'.is_active', true);
     }
 }

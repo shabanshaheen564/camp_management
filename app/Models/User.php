@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\Permission;
+use App\Support\PgBoolean;
 
 class User extends Authenticatable
 {
@@ -107,6 +108,11 @@ class User extends Authenticatable
     public function isCampManager()
     {
         return $this->hasRole('camp_manager');
+    }
+
+    public function scopeActive($query)
+    {
+        return PgBoolean::where($query, $this->getTable().'.is_active', true);
     }
 
     public function canAccessCamp($campId)

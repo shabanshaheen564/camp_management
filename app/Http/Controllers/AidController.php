@@ -69,8 +69,8 @@ class AidController extends Controller
             $pending = (clone $query)->where('status', 'pending')->count();
         }
 
-        $camps = Camp::where('is_active', true)->get();
-        $aidTypes = AidType::where('is_active', true)->get();
+        $camps = Camp::active()->get();
+        $aidTypes = AidType::active()->get();
 
         return view('camp_management.aid', compact(
             'aids', 'totalDistributions', 'thisMonth', 'completed', 'pending', 'camps', 'aidTypes'

@@ -41,11 +41,11 @@ class FamilyController extends Controller
         if ($user->isAdmin()) {
             $totalFamilies = Guardian::count();
             $totalMembers  = FamilyMember::count();
-            $camps         = Camp::where('is_active', true)->get();
+            $camps         = Camp::active()->get();
         } else {
             $totalFamilies = Guardian::where('camp_id', $user->camp_id)->count();
             $totalMembers  = FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $user->camp_id))->count();
-            $camps         = Camp::where('is_active', true)->where('id', $user->camp_id)->get();
+            $camps         = Camp::active()->where('id', $user->camp_id)->get();
         }
 
         $campsCount = $camps->count();

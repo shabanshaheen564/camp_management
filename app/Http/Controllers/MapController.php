@@ -10,13 +10,13 @@ class MapController extends Controller
 {
     public function index()
     {
-        $camps = Camp::where('is_active', true)
+        $camps = Camp::active()
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->withCount('guardians')
             ->get();
 
-        $hospitals = Hospital::where('is_active', true)
+        $hospitals = Hospital::active()
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->get();
@@ -26,7 +26,7 @@ class MapController extends Controller
 
     public function campsData()
     {
-        $camps = Camp::where('is_active', true)
+        $camps = Camp::active()
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->withCount('guardians')
@@ -50,7 +50,7 @@ class MapController extends Controller
 
     public function hospitalsData()
     {
-        $hospitals = Hospital::where('is_active', true)
+        $hospitals = Hospital::active()
             ->get()
             ->map(fn($h) => [
                 'id'        => $h->id,

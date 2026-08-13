@@ -16,7 +16,7 @@ class DashboardController extends Controller
 
         if ($user->isAdmin()) {
             $totalCamps     = Camp::count();
-            $activeCamps    = Camp::where('is_active', true)->count();
+            $activeCamps    = Camp::active()->count();
             $totalFamilies  = Guardian::count();
             $totalMembers   = FamilyMember::whereHas('guardian')->count();
             $totalDisplaced = $totalFamilies + $totalMembers;
@@ -26,7 +26,7 @@ class DashboardController extends Controller
         } else {
             $campId = $user->camp_id;
             $totalCamps     = Camp::where('id', $campId)->count();
-            $activeCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
+            $activeCamps    = Camp::active()->where('id', $campId)->count();
             $totalFamilies  = Guardian::where('camp_id', $campId)->count();
             $totalMembers   = FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))->count();
             $totalDisplaced = $totalFamilies + $totalMembers;

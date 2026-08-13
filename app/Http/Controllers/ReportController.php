@@ -16,15 +16,15 @@ class ReportController extends Controller
         $user = auth()->user();
 
         if ($user->isAdmin()) {
-            $totalCamps    = Camp::where('is_active', true)->count();
+            $totalCamps    = Camp::active()->count();
             $totalFamilies = Guardian::count();
             $totalMembers  = FamilyMember::count();
             $totalPersons  = $totalFamilies + $totalMembers;
             $totalAids     = AidDistribution::count();
 
-            $camps = Camp::where('is_active', true)->orderBy('name')->get();
+            $camps = Camp::active()->orderBy('name')->get();
 
-            $campsData = Camp::where('is_active', true)
+            $campsData = Camp::active()
                 ->withCount('guardians')
                 ->orderByDesc('guardians_count')
                 ->take(8)
@@ -62,15 +62,15 @@ class ReportController extends Controller
         } else {
             $campId = $user->camp_id;
 
-            $totalCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
+            $totalCamps    = Camp::active()->where('id', $campId)->count();
             $totalFamilies = Guardian::where('camp_id', $campId)->count();
             $totalMembers  = FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $campId))->count();
             $totalPersons  = $totalFamilies + $totalMembers;
             $totalAids     = AidDistribution::where('camp_id', $campId)->count();
 
-            $camps = Camp::where('is_active', true)->where('id', $campId)->orderBy('name')->get();
+            $camps = Camp::active()->where('id', $campId)->orderBy('name')->get();
 
-            $campsData = Camp::where('is_active', true)
+            $campsData = Camp::active()
                 ->where('id', $campId)
                 ->withCount('guardians')
                 ->orderByDesc('guardians_count')
@@ -123,13 +123,13 @@ class ReportController extends Controller
         $user = auth()->user();
 
         if ($user->isAdmin()) {
-            $totalCamps    = Camp::where('is_active', true)->count();
+            $totalCamps    = Camp::active()->count();
             $totalFamilies = Guardian::count();
             $totalMembers  = FamilyMember::count();
             $totalPersons  = $totalFamilies + $totalMembers;
             $totalAids     = AidDistribution::count();
 
-            $camps = Camp::where('is_active', true)
+            $camps = Camp::active()
                 ->withCount('guardians')
                 ->orderBy('name')
                 ->get();
@@ -137,13 +137,13 @@ class ReportController extends Controller
             $ageGroups = AgeGroupQuery::counts(FamilyMember::query());
         } else {
             $campId = $user->camp_id;
-            $totalCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
+            $totalCamps    = Camp::active()->where('id', $campId)->count();
             $totalFamilies = Guardian::where('camp_id', $campId)->count();
             $totalMembers  = FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $campId))->count();
             $totalPersons  = $totalFamilies + $totalMembers;
             $totalAids     = AidDistribution::where('camp_id', $campId)->count();
 
-            $camps = Camp::where('is_active', true)
+            $camps = Camp::active()
                 ->where('id', $campId)
                 ->withCount('guardians')
                 ->orderBy('name')

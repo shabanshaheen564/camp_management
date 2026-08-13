@@ -30,11 +30,11 @@ class UserController extends Controller
         $users = $query->latest()->paginate(10)->withQueryString();
 
         $totalUsers  = User::count();
-        $activeUsers = User::where('is_active', true)->count();
+        $activeUsers = User::active()->count();
         $admins      = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->count();
 
         $roles = Role::all();
-        $camps = Camp::where('is_active', true)->get();
+        $camps = Camp::active()->get();
 
         return view('camp_management.users', compact('users', 'totalUsers', 'activeUsers', 'admins', 'roles', 'camps'));
     }
