@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -32,6 +33,7 @@ class FamilyUpdatedNotification extends Notification
             'message' => "تم تعديل بيانات عائلة \"{$this->familyName}\"" . ($this->campName ? " - مخيم {$this->campName}" : ''),
             'icon'    => 'fa-users',
             'url'     => route('families.index'),
+            'section' => NotificationSections::FAMILIES,
         ];
     }
 }

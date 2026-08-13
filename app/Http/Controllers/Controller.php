@@ -57,4 +57,18 @@ abstract class Controller
             'family_name' => $familyName,
         ];
     }
+
+    protected function markNotificationsRead(string $section): void
+    {
+        if (!auth()->check()) {
+            return;
+        }
+
+        app(\App\Services\NotificationCenter::class)->markSectionRead(auth()->user(), $section);
+    }
+
+    protected function notifyAdmins(\Illuminate\Notifications\Notification $notification): void
+    {
+        app(\App\Services\NotificationCenter::class)->notifyAdmins($notification);
+    }
 }

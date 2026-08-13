@@ -5,16 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Guardian;
 use App\Models\FamilyMember;
 use App\Models\Camp;
-use App\Models\User;
-use Illuminate\Http\Request;
 use App\Notifications\FamilyCreatedNotification;
-use App\Notifications\FamilyUpdatedNotification;
+use App\Notifications\FamilyDeletedNotification;
+use App\Notifications\FamilyForceDeletedNotification;
 use App\Notifications\FamilyMemberAddedNotification;
+use App\Notifications\FamilyMemberDeletedNotification;
+use App\Notifications\FamilyRestoredNotification;
+use App\Notifications\FamilyUpdatedNotification;
+use App\Services\NotificationCenter;
+use App\Support\NotificationSections;
+use Illuminate\Http\Request;
 
 class FamilyController extends Controller
 {
     public function index(Request $request)
     {
+        $this->markNotificationsRead(NotificationSections::FAMILIES);
+
         $user = auth()->user();
         $query = Guardian::with('camp')->withCount('familyMembers');
 
@@ -95,14 +102,13 @@ class FamilyController extends Controller
             'is_disabled'          => 0,
         ]);
 
-        $admins = User::whereHas('role', fn ($q) => $q->where('name', 'admin'))->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new FamilyCreatedNotification(
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyCreatedNotification(
                 $guardian->full_name,
                 $guardian->camp?->name,
                 $guardian->card_id
-            ));
-        }
+            )
+        );
 
         return back()->with('success', 'تم تسجيل العائلة');
     }
@@ -142,14 +148,13 @@ class FamilyController extends Controller
             'marital_status' => $data['marital_status'] ?? 'single',
         ]);
 
-        $admins = User::whereHas('role', fn ($q) => $q->where('name', 'admin'))->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new FamilyUpdatedNotification(
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyUpdatedNotification(
                 $family->full_name,
                 $family->camp?->name,
                 $family->card_id
-            ));
-        }
+            )
+        );
 
         return back()->with('success', 'تم التعديل');
     }
@@ -158,14 +163,23 @@ class FamilyController extends Controller
     {
         $this->authorizeGuardianAccess($family);
 
+        $familyName = $family->full_name;
+        $campName = $family->camp?->name;
+
         $family->familyMembers()->delete();
         $family->delete();
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyDeletedNotification($familyName, $campName)
+        );
 
         return back()->with('success', 'تم حذف العائلة وجميع أفرادها بنجاح');
     }
 
     public function trash(Request $request)
     {
+        $this->markNotificationsRead(NotificationSections::FAMILIES_TRASH);
+
         $user = auth()->user();
         $query = Guardian::onlyTrashed()->with('camp')->withCount('familyMembers');
 
@@ -195,6 +209,10 @@ class FamilyController extends Controller
         $family->familyMembers()->onlyTrashed()->restore();
         $family->restore();
 
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyRestoredNotification($family->full_name, $family->camp?->name)
+        );
+
         return back()->with('success', 'تم استرجاع العائلة وجميع أفرادها بنجاح');
     }
 
@@ -203,8 +221,15 @@ class FamilyController extends Controller
         $family = Guardian::onlyTrashed()->findOrFail($id);
         $this->authorizeGuardianAccess($family);
 
+        $familyName = $family->full_name;
+        $campName = $family->camp?->name;
+
         $family->familyMembers()->onlyTrashed()->forceDelete();
         $family->forceDelete();
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyForceDeletedNotification($familyName, $campName)
+        );
 
         return back()->with('success', 'تم الحذف النهائي للعائلة وجميع أفرادها');
     }
@@ -236,14 +261,13 @@ class FamilyController extends Controller
             'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
         ]);
 
-        $admins = User::whereHas('role', fn ($q) => $q->where('name', 'admin'))->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new FamilyMemberAddedNotification(
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyMemberAddedNotification(
                 $data['full_name'],
                 $guardian->full_name,
                 $guardian->camp?->name
-            ));
-        }
+            )
+        );
 
         return back()->with('success', 'تم إضافة الفرد بنجاح.');
     }
@@ -259,7 +283,14 @@ class FamilyController extends Controller
     {
         $this->authorizeFamilyMemberAccess($member);
 
+        $memberName = $member->name;
+        $familyName = $member->guardian?->full_name;
+
         $member->delete();
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyMemberDeletedNotification($memberName, $familyName)
+        );
 
         return back()->with('success', 'تم حذف الفرد بنجاح.');
     }

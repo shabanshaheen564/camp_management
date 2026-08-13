@@ -1,4 +1,8 @@
 <aside class="sidebar" id="sidebar">
+    @php
+        $badges = $sectionBadges ?? [];
+    @endphp
+
     <div class="sidebar-brand">
         <div class="brand-icon">
             <i class="fas fa-campground"></i>
@@ -19,27 +23,27 @@
 
         <div class="nav-section-label">إدارة المخيمات</div>
 
-        <a href="{{ route('camps.index') }}" class="nav-link-item {{ request()->routeIs('camps.*') ? 'active' : '' }}">
-            <i class="fas fa-tent"></i>
-            المخيمات
+        <a href="{{ route('camps.index') }}" class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('camps.*') ? 'active' : '' }}">
+            <span><i class="fas fa-tent"></i> المخيمات</span>
+            <span id="sidebarBadgeCamps" class="badge bg-danger rounded-pill" style="{{ ($badges['camps'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['camps'] ?? 0) > 99 ? '99+' : ($badges['camps'] ?? 0) }}</span>
         </a>
 
         <a href="{{ route('families.index') }}"
-            class="nav-link-item {{ request()->routeIs('families.index') ? 'active' : '' }}">
-            <i class="fas fa-users"></i>
-            العائلات والأفراد
+            class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('families.index') ? 'active' : '' }}">
+            <span><i class="fas fa-users"></i> العائلات والأفراد</span>
+            <span id="sidebarBadgeFamilies" class="badge bg-danger rounded-pill" style="{{ ($badges['families'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['families'] ?? 0) > 99 ? '99+' : ($badges['families'] ?? 0) }}</span>
         </a>
 
         <a href="{{ route('families.trash') }}"
-            class="nav-link-item {{ request()->routeIs('families.trash') ? 'active' : '' }}"
+            class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('families.trash') ? 'active' : '' }}"
             style="padding-right:2.2rem; font-size:0.85rem; opacity:0.85;">
-            <i class="fas fa-trash" style="font-size:0.8rem;"></i>
-            سلة محذوفات العائلات
+            <span><i class="fas fa-trash" style="font-size:0.8rem;"></i> سلة محذوفات العائلات</span>
+            <span id="sidebarBadgeFamiliesTrash" class="badge bg-danger rounded-pill" style="{{ ($badges['families.trash'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['families.trash'] ?? 0) > 99 ? '99+' : ($badges['families.trash'] ?? 0) }}</span>
         </a>
 
-        <a href="{{ route('aid.index') }}" class="nav-link-item {{ request()->routeIs('aid.*') ? 'active' : '' }}">
-            <i class="fas fa-box-open"></i>
-            توزيع المساعدات
+        <a href="{{ route('aid.index') }}" class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('aid.*') ? 'active' : '' }}">
+            <span><i class="fas fa-box-open"></i> توزيع المساعدات</span>
+            <span id="sidebarBadgeAid" class="badge bg-danger rounded-pill" style="{{ ($badges['aid'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['aid'] ?? 0) > 99 ? '99+' : ($badges['aid'] ?? 0) }}</span>
         </a>
 
         <div class="nav-section-label">التحليل والمتابعة</div>
@@ -58,20 +62,20 @@
         <a href="{{ route('notifications.index') }}"
             class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
             <span><i class="fas fa-bell"></i> الإشعارات</span>
-            <span id="sidebarNotifBadge" class="badge bg-danger rounded-pill" style="display:none;">0</span>
+            <span id="sidebarNotifBadge" class="badge bg-danger rounded-pill" style="{{ ($badges['notifications'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['notifications'] ?? 0) > 99 ? '99+' : ($badges['notifications'] ?? 0) }}</span>
         </a>
 
         <div class="nav-section-label">الإدارة</div>
 
         @if(auth()->user()->role?->display_name === 'Administrator')
-            <a href="{{ route('users.index') }}" class="nav-link-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                <i class="fas fa-user-cog"></i>
-                المستخدمون
+            <a href="{{ route('users.index') }}" class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <span><i class="fas fa-user-cog"></i> المستخدمون</span>
+                <span id="sidebarBadgeUsers" class="badge bg-danger rounded-pill" style="{{ ($badges['users'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['users'] ?? 0) > 99 ? '99+' : ($badges['users'] ?? 0) }}</span>
             </a>
 
-            <a href="{{ route('roles.index') }}" class="nav-link-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                <i class="fas fa-shield-alt"></i>
-                الأدوار والصلاحيات
+            <a href="{{ route('roles.index') }}" class="nav-link-item d-flex align-items-center justify-content-between {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                <span><i class="fas fa-shield-alt"></i> الأدوار والصلاحيات</span>
+                <span id="sidebarBadgeRoles" class="badge bg-danger rounded-pill" style="{{ ($badges['roles'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ ($badges['roles'] ?? 0) > 99 ? '99+' : ($badges['roles'] ?? 0) }}</span>
             </a>
         @endif
     </nav>

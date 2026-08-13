@@ -4,16 +4,16 @@ namespace App\Notifications;
 
 use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class RoleCreatedNotification extends Notification
+class RoleUpdatedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public string $roleName, public ?string $displayName = null)
-    {
+    public function __construct(
+        public string $roleName,
+        public ?string $displayName = null
+    ) {
     }
 
     public function via(object $notifiable): array
@@ -26,8 +26,8 @@ class RoleCreatedNotification extends Notification
         $display = $this->displayName ?: $this->roleName;
 
         return [
-            'title' => 'دور جديد',
-            'message' => "تم إنشاء دور جديد: {$display}",
+            'title' => 'تعديل دور',
+            'message' => "تم تعديل الدور \"{$display}\"",
             'icon' => 'fa-shield-alt',
             'url' => route('roles.index'),
             'section' => NotificationSections::ROLES,

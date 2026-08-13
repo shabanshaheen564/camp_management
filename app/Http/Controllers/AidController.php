@@ -5,12 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\AidDistribution;
 use App\Models\AidType;
 use App\Models\Camp;
+use App\Notifications\AidCreatedNotification;
+use App\Notifications\AidDeletedNotification;
+use App\Notifications\AidUpdatedNotification;
+use App\Services\NotificationCenter;
+use App\Support\NotificationSections;
 use Illuminate\Http\Request;
 
 class AidController extends Controller
 {
     public function index(Request $request)
     {
+        $this->markNotificationsRead(NotificationSections::AID);
+
         $query = AidDistribution::with(['camp', 'aidType']);
 
         if (auth()->user()->isAdmin()) {
@@ -95,7 +102,7 @@ class AidController extends Controller
             'special_notes'     => 'nullable|string|max:500',
         ]);
 
-        AidDistribution::create([
+        $distribution = AidDistribution::create([
             'camp_id'            => $request->camp_id,
             'aid_type_id'        => $request->aid_type_id,
             'distribution_date'  => $request->distribution_date,
@@ -106,6 +113,11 @@ class AidController extends Controller
             'special_notes'      => $request->special_notes,
             'created_by'         => auth()->id(),
         ]);
+
+        $distribution->load(['camp', 'aidType']);
+        app(NotificationCenter::class)->notifyAdmins(
+            new AidCreatedNotification($distribution->camp?->name ?? '—', $distribution->aidType?->name)
+        );
 
         return redirect()->route('aid.index')->with('success', 'تمت إضافة توزيع المساعدات بنجاح');
     }
@@ -142,6 +154,11 @@ class AidController extends Controller
             'special_notes'      => $request->special_notes,
         ]);
 
+        $aid->load(['camp', 'aidType']);
+        app(NotificationCenter::class)->notifyAdmins(
+            new AidUpdatedNotification($aid->camp?->name ?? '—', $aid->aidType?->name)
+        );
+
         return redirect()->route('aid.index')->with('success', 'تم تحديث توزيع المساعدات بنجاح');
     }
 
@@ -151,7 +168,16 @@ class AidController extends Controller
             abort(403, 'غير مصرح لك بهذا الإجراء');
         }
 
+        $aid->load(['camp', 'aidType']);
+        $campName = $aid->camp?->name ?? '—';
+        $aidType = $aid->aidType?->name;
+
         $aid->delete();
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new AidDeletedNotification($campName, $aidType)
+        );
+
         return redirect()->route('aid.index')->with('success', 'تم حذف توزيع المساعدات بنجاح');
     }
 }

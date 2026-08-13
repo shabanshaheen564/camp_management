@@ -4,18 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Camp;
 use App\Models\User;
+use App\Notifications\CampCreatedNotification;
+use App\Notifications\CampDeletedNotification;
+use App\Notifications\CampUpdatedNotification;
+use App\Services\NotificationCenter;
 use App\Support\ImportColumnMapper;
 use App\Support\ImportSpreadsheetReader;
+use App\Support\NotificationSections;
 use Illuminate\Http\Request;
-use SimpleXLSX;
-use Illuminate\Support\Facades\Storage;
-use App\Notifications\CampCreatedNotification;
-use App\Notifications\CampUpdatedNotification;
 
 class CampController extends Controller
 {
     public function index(Request $request)
     {
+        $this->markNotificationsRead(NotificationSections::CAMPS);
+
         $query = Camp::withCount('guardians');
 
         if (!auth()->user()->isAdmin()) {
@@ -68,10 +71,9 @@ class CampController extends Controller
             'created_by'  => auth()->id(),
         ]);
 
-        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new CampCreatedNotification($request->name, $request->location));
-        }
+        app(NotificationCenter::class)->notifyAdmins(
+            new CampCreatedNotification($request->name, $request->location)
+        );
 
         return redirect()->route('camps.index')->with('success', 'تمت إضافة المخيم بنجاح');
     }
@@ -105,10 +107,9 @@ class CampController extends Controller
         'description' => $request->description,
     ]);
 
-    $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
-    foreach ($admins as $admin) {
-        $admin->notify(new CampUpdatedNotification($camp->name, $camp->location));
-    }
+    app(NotificationCenter::class)->notifyAdmins(
+        new CampUpdatedNotification($camp->name, $camp->location)
+    );
 
     return redirect()->route('camps.index')->with('success', 'تم تحديث المخيم بنجاح');
 }
@@ -117,11 +118,19 @@ class CampController extends Controller
     {
         $this->authorizeCampAccess($camp->id);
 
+        $campName = $camp->name;
+        $location = $camp->location;
+
         foreach ($camp->guardians as $guardian) {
             $guardian->familyMembers()->delete();
         }
         $camp->guardians()->delete();
         $camp->delete();
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new CampDeletedNotification($campName, $location)
+        );
+
         return back()->with('success', 'تم حذف المخيم وجميع عائلاته وأفرادها بنجاح.');
     }
 

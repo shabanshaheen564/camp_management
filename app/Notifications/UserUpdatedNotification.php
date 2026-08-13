@@ -4,16 +4,16 @@ namespace App\Notifications;
 
 use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class UserCreatedNotification extends Notification
+class UserUpdatedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public string $userName, public ?string $roleName = null)
-    {
+    public function __construct(
+        public string $userName,
+        public ?string $roleName = null
+    ) {
     }
 
     public function via(object $notifiable): array
@@ -24,9 +24,9 @@ class UserCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'مستخدم جديد',
-            'message' => "تم إنشاء مستخدم جديد: {$this->userName}" . ($this->roleName ? " بدور {$this->roleName}" : ''),
-            'icon' => 'fa-user-plus',
+            'title' => 'تعديل مستخدم',
+            'message' => "تم تعديل بيانات المستخدم \"{$this->userName}\"" . ($this->roleName ? " — {$this->roleName}" : ''),
+            'icon' => 'fa-user-edit',
             'url' => route('users.index'),
             'section' => NotificationSections::USERS,
             'user_name' => $this->userName,

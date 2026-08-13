@@ -5,14 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\RoleCreatedNotification;
+use App\Notifications\RoleUpdatedNotification;
+use App\Services\NotificationCenter;
+use App\Support\NotificationSections;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Notifications\RoleCreatedNotification;
 
 class RoleController extends Controller
 {
     public function index(Request $request)
     {
+        $this->markNotificationsRead(NotificationSections::ROLES);
+
         $query = Role::withCount('users');
 
         if ($request->filled('search')) {
@@ -44,10 +49,9 @@ class RoleController extends Controller
             'is_active'    => true,
         ]);
 
-        $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new RoleCreatedNotification($request->name, $request->display_name));
-        }
+        app(NotificationCenter::class)->notifyAdmins(
+            new RoleCreatedNotification($request->name, $request->display_name)
+        );
 
         return redirect()->route('roles.index')->with('success', 'تمت إضافة الدور بنجاح');
     }
@@ -65,6 +69,10 @@ class RoleController extends Controller
             'display_name' => $request->display_name ?? $request->name,
             'description'  => $request->description,
         ]);
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new RoleUpdatedNotification($role->name, $role->display_name)
+        );
 
         return redirect()->route('roles.index')->with('success', 'تم تحديث الدور بنجاح');
     }

@@ -5,14 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Camp;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\UserCreatedNotification;
+use App\Notifications\UserUpdatedNotification;
+use App\Services\NotificationCenter;
+use App\Support\NotificationSections;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Notifications\UserCreatedNotification;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
+        $this->markNotificationsRead(NotificationSections::USERS);
+
         $query = User::with(['role', 'camp']);
 
         if ($request->filled('search')) {
@@ -60,10 +65,9 @@ class UserController extends Controller
 
         $user = User::where('email', $request->email)->first();
         if ($user && $user->role) {
-            $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new UserCreatedNotification($user->name, $user->role->display_name ?? $user->role->name));
-            }
+            app(NotificationCenter::class)->notifyAdmins(
+                new UserCreatedNotification($user->name, $user->role->display_name ?? $user->role->name)
+            );
         }
 
         return redirect()->route('users.index')->with('success', 'تمت إضافة المستخدم بنجاح');
@@ -90,6 +94,11 @@ class UserController extends Controller
         }
 
         $user->update($data);
+        $user->load('role');
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new UserUpdatedNotification($user->name, $user->role?->display_name ?? $user->role?->name)
+        );
 
         return redirect()->route('users.index')->with('success', 'تم تحديث المستخدم بنجاح');
     }

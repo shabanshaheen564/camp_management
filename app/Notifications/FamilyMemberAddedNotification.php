@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -32,6 +33,7 @@ class FamilyMemberAddedNotification extends Notification
             'message' => "تمت إضافة \"{$this->memberName}\" إلى عائلة \"{$this->familyName}\"" . ($this->campName ? " - مخيم {$this->campName}" : ''),
             'icon'    => 'fa-user-plus',
             'url'     => route('families.index'),
+            'section' => NotificationSections::FAMILIES,
         ];
     }
 }

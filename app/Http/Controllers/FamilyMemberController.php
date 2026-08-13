@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use SimpleXLSX;
 use Shuchkin\SimpleXLSXGen;
 use App\Notifications\FamilyCreatedNotification;
+use App\Notifications\FamilyMemberDeletedNotification;
+use App\Services\NotificationCenter;
 use App\Support\ImportColumnMapper;
 use App\Support\ImportSpreadsheetReader;
 
@@ -60,7 +62,15 @@ class FamilyMemberController extends Controller
     {
         $this->authorizeFamilyMemberAccess($member, expectsJson: true);
 
+        $memberName = $member->name;
+        $familyName = $member->guardian?->full_name;
+
         $member->delete();
+
+        app(NotificationCenter::class)->notifyAdmins(
+            new FamilyMemberDeletedNotification($memberName, $familyName)
+        );
+
         return response()->json(['message' => 'تم الحذف']);
     }
 
@@ -175,11 +185,13 @@ class FamilyMemberController extends Controller
         }
 
         if (!empty($newGuardians)) {
-            $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+            $center = app(NotificationCenter::class);
             foreach ($newGuardians as $guardian) {
-                foreach ($admins as $admin) {
-                    $admin->notify(new FamilyCreatedNotification($guardian->full_name ?? $guardian->first_name, $guardian->camp?->name, $guardian->card_id));
-                }
+                $center->notifyAdmins(new FamilyCreatedNotification(
+                    $guardian->full_name ?? $guardian->first_name,
+                    $guardian->camp?->name,
+                    $guardian->card_id
+                ));
             }
         }
 
@@ -332,11 +344,13 @@ class FamilyMemberController extends Controller
         }
 
         if (!empty($newGuardians)) {
-            $admins = User::whereHas('role', fn($q) => $q->where('name', 'admin'))->get();
+            $center = app(NotificationCenter::class);
             foreach ($newGuardians as $guardian) {
-                foreach ($admins as $admin) {
-                    $admin->notify(new FamilyCreatedNotification($guardian->full_name ?? $guardian->first_name, $guardian->camp?->name, $guardian->card_id));
-                }
+                $center->notifyAdmins(new FamilyCreatedNotification(
+                    $guardian->full_name ?? $guardian->first_name,
+                    $guardian->camp?->name,
+                    $guardian->card_id
+                ));
             }
         }
 

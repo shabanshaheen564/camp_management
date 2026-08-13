@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'mark.section' => \App\Http\Middleware\MarkSectionNotificationsRead::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

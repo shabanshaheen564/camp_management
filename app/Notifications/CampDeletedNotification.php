@@ -4,11 +4,9 @@ namespace App\Notifications;
 
 use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class CampCreatedNotification extends Notification
+class CampDeletedNotification extends Notification
 {
     use Queueable;
 
@@ -24,13 +22,11 @@ class CampCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'مخيم جديد',
-            'message' => "تم إنشاء مخيم جديد: {$this->campName}" . ($this->location ? " ({$this->location})" : ''),
-            'icon' => 'fa-campground',
-            'url' => route('camps.index'),
+            'title'   => 'حذف مخيم',
+            'message' => "تم حذف المخيم \"{$this->campName}\"" . ($this->location ? " ({$this->location})" : ''),
+            'icon'    => 'fa-trash',
+            'url'     => route('camps.index'),
             'section' => NotificationSections::CAMPS,
-            'camp_name' => $this->campName,
-            'location' => $this->location,
         ];
     }
 }

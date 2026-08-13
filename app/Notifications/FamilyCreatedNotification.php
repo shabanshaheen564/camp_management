@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -27,6 +28,7 @@ class FamilyCreatedNotification extends Notification
             'message' => "تم تسجيل عائلة جديدة: {$this->guardianName}" . ($this->campName ? " في مخيم {$this->campName}" : ''),
             'icon' => 'fa-users',
             'url' => route('families.index'),
+            'section' => NotificationSections::FAMILIES,
             'guardian_name' => $this->guardianName,
             'camp_name' => $this->campName,
             'card_id' => $this->cardId,

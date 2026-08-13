@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\NotificationSections;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -30,6 +31,7 @@ class CampUpdatedNotification extends Notification
             'message' => "تم تعديل بيانات مخيم \"{$this->campName}\"" . ($this->location ? " - {$this->location}" : ''),
             'icon'    => 'fa-tent',
             'url'     => route('camps.index'),
+            'section' => NotificationSections::CAMPS,
         ];
     }
 }

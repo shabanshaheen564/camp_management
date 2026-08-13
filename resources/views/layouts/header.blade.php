@@ -1,6 +1,6 @@
 {{-- Notification Bell --}}
 <div class="dropdown">
-    <button class="header-btn dropdown-toggle" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="الإشعارات">
+    <button class="header-btn dropdown-toggle" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="الإشعارات" style="position:relative;">
         <i class="fas fa-bell"></i>
         <span id="notificationBadge" class="badge bg-danger rounded-pill" style="position:absolute; top:-4px; left:-4px; font-size:0.65rem; display:none;">0</span>
     </button>
@@ -29,14 +29,23 @@
         weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
     });
 
+    const sectionBadgeMap = {
+        'camps': 'sidebarBadgeCamps',
+        'families': 'sidebarBadgeFamilies',
+        'families.trash': 'sidebarBadgeFamiliesTrash',
+        'aid': 'sidebarBadgeAid',
+        'users': 'sidebarBadgeUsers',
+        'roles': 'sidebarBadgeRoles',
+        'notifications': 'sidebarNotifBadge',
+    };
+
     document.getElementById('notificationsDropdown').addEventListener('show.bs.dropdown', function () {
         loadNotifications();
     });
 
-    // تحميل الإشعارات فور فتح أي صفحة، لتحديث العداد في الهيدر والقائمة الجانبية ولوحة التحكم مباشرة
     document.addEventListener('DOMContentLoaded', function () {
         loadNotifications();
-        setInterval(loadNotifications, 60000); // تحديث دوري كل دقيقة
+        setInterval(loadNotifications, 60000);
     });
 
     async function loadNotifications() {
@@ -47,6 +56,7 @@
             });
             const data = await res.json();
             updateNotificationBadge(data.unread_count || 0);
+            updateSectionBadges(data.section_counts || {});
             if (list) renderNotifications(data.notifications || []);
         } catch (err) {
             if (list) list.innerHTML = '<div class="text-center py-3 text-muted">فشل تحميل الإشعارات</div>';
@@ -54,23 +64,27 @@
     }
 
     function updateNotificationBadge(count) {
-        // شارة جرس الإشعارات في الهيدر
         const badge = document.getElementById('notificationBadge');
         if (badge) {
             badge.textContent = count > 99 ? '99+' : count;
             badge.style.display = count > 0 ? 'inline' : 'none';
         }
-        // شارة الإشعارات في القائمة الجانبية
-        const sidebarBadge = document.getElementById('sidebarNotifBadge');
-        if (sidebarBadge) {
-            sidebarBadge.textContent = count > 99 ? '99+' : count;
-            sidebarBadge.style.display = count > 0 ? 'inline-block' : 'none';
-        }
-        // عداد الإشعارات في لوحة التحكم (إن وُجد في الصفحة الحالية)
+
         const dashboardCount = document.getElementById('dashboardNotifCount');
         if (dashboardCount) {
             dashboardCount.textContent = count;
         }
+    }
+
+    function updateSectionBadges(sectionCounts) {
+        Object.entries(sectionBadgeMap).forEach(([section, elementId]) => {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            const count = sectionCounts[section] || 0;
+            el.textContent = count > 99 ? '99+' : count;
+            el.style.display = count > 0 ? 'inline-block' : 'none';
+        });
     }
 
     function renderNotifications(notifications) {
