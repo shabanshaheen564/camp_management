@@ -15,6 +15,11 @@
         <h5 class="card-title mb-0">تعيين أعمدة Excel إلى حقول قاعدة البيانات</h5>
     </div>
     <div class="card-body">
+        <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+            <i class="fas fa-magic me-2"></i>
+            <div>تم تحديد الأعمدة تلقائياً — راجع المطابقة وعدّل أي حقل غير صحيح قبل الاستيراد.</div>
+        </div>
+
         <form method="POST" action="{{ route('camps.import') }}">
             @csrf
             <input type="hidden" name="import_rows" value="{{ base64_encode(json_encode($rows)) }}">
@@ -39,10 +44,10 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <select name="mapping[{{ $field }}]" class="form-select">
+                                    <select name="mapping[{{ $field }}]" class="form-select field-mapping-select" data-field="{{ $field }}">
                                         <option value="">-- لا يوجد --</option>
                                         @foreach($headers as $header)
-                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($loop->first && $field === 'name')) ? 'selected' : '' }}>
+                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header) ? 'selected' : '' }}>
                                                 {{ $header }}
                                             </option>
                                         @endforeach
@@ -50,10 +55,10 @@
                                 </td>
                                 <td>
                                     @php
-                                        $sampleKey = $headers[0] ?? null;
+                                        $sampleKey = $autoMapping[$field] ?? old("mapping.$field") ?? null;
                                         $sample = $sampleKey ? ($rows[0][$sampleKey] ?? '') : '';
                                     @endphp
-                                    <code>{{ $sample }}</code>
+                                    <code class="mapping-sample" data-field="{{ $field }}">{{ $sample }}</code>
                                 </td>
                             </tr>
                         @endforeach
@@ -70,5 +75,18 @@
         </form>
     </div>
 </div>
+
+<script>
+    const firstRowSample = @json($rows[0] ?? []);
+    document.querySelectorAll('.field-mapping-select').forEach(function (select) {
+        select.addEventListener('change', function () {
+            const field = this.dataset.field;
+            const sampleEl = document.querySelector('.mapping-sample[data-field="' + field + '"]');
+            if (sampleEl) {
+                sampleEl.textContent = this.value ? (firstRowSample[this.value] ?? '') : '';
+            }
+        });
+    });
+</script>
 
 @endsection

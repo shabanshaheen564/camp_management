@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Camp;
 use App\Models\User;
+use App\Support\ImportColumnMapper;
+use App\Support\ImportSpreadsheetReader;
 use Illuminate\Http\Request;
 use SimpleXLSX;
 use Illuminate\Support\Facades\Storage;
@@ -184,48 +186,14 @@ class CampController extends Controller
             }],
         ]);
 
-        $file = $request->file('file');
-        $path = $file->getRealPath();
-        $extension = strtolower($file->getClientOriginalExtension());
+        $parsed = ImportSpreadsheetReader::read($request->file('file'));
+        $headers = $parsed['headers'];
+        $rows = $parsed['rows'];
 
-        $headers = [];
-        $rows = [];
+        $dbFields = ImportColumnMapper::campFieldLabels();
+        $autoMapping = ImportColumnMapper::mapCamps($headers);
 
-        if ($extension === 'csv') {
-            $handle = fopen($path, 'r');
-            if ($handle !== false) {
-                $headers = fgetcsv($handle, 0, ',');
-                $headerMap = array_flip($headers);
-                while (($row = fgetcsv($handle, 0, ',')) !== false) {
-                    $rows[] = array_combine($headers, $row);
-                }
-                fclose($handle);
-            }
-        } else {
-            if ($xlsx = SimpleXLSX::parse($path)) {
-                $allRows = $xlsx->rows();
-                $headers = array_shift($allRows);
-                foreach ($allRows as $row) {
-                    $rows[] = array_combine($headers, $row);
-                }
-            }
-        }
-
-        $dbFields = [
-            'name' => 'اسم المخيم',
-            'location' => 'الموقع',
-            'latitude' => 'خط العرض',
-            'longitude' => 'خط الطول',
-            'capacity' => 'الطاقة الاستيعابية',
-            'current_occupancy' => 'الإشغال الحالي',
-            'manager' => 'مدير المخيم',
-            'phone' => 'الهاتف',
-            'description' => 'الوصف',
-            'status' => 'الحالة',
-            'is_active' => 'نشط',
-        ];
-
-        return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields'));
+        return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields', 'autoMapping'));
     }
 
     /**

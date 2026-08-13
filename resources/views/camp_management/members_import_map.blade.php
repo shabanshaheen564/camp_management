@@ -20,12 +20,12 @@
             <input type="hidden" name="import_rows" value="{{ base64_encode(json_encode($rows)) }}">
             <input type="hidden" name="import_headers" value="{{ base64_encode(json_encode($headers)) }}">
 
-            <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
-                <i class="fas fa-exclamation-triangle me-2"></i>
+            <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                <i class="fas fa-magic me-2"></i>
                 <div>
-                    حقل <strong>رقم هوية رب الأسرة (Guardian Card ID)</strong> مطلوب لربط الفرد بعائلته.
-                    إذا لم يتم العثور على رب الأسرة وكانت الحالة الاجتماعية (متزوج/مطلق/أرمل/منفصل)، سيتم إنشاء عائلة جديدة تلقائيًا في المخيم المحدد.
-                    أما إذا كانت الحالة الاجتماعية (غير متزوج/أعزب)، فسيتم إضافة الفرد إلى عائلة رب الأسرة الموجود فقط.
+                    تم تحديد الأعمدة تلقائياً — راجع المطابقة وعدّل أي حقل غير صحيح.
+                    إذا <strong>رقم هوية الفرد = رقم ولي الأمر</strong> أو كانت صلة القرابة «رب الأسرة»، يُسجَّل كولي أمر.
+                    إذا ولي الأمر موجود يُضاف الفرد له؛ وإلا يُنشأ تلقائياً. المخيم يُحدَّد من عمود «اسم المخيم» ويُنقل الشخص إذا تغيّر.
                 </div>
             </div>
 
@@ -43,7 +43,7 @@
                             <tr>
                                 <td>
                                     <strong>{{ $label }}</strong>
-                                    @if(in_array($field, ['guardian_card_id', 'name']))
+                                    @if(in_array($field, ['guardian_card_id', 'name', 'guardian_camp']))
                                         <span class="text-danger">*</span>
                                     @endif
                                 </td>
@@ -51,7 +51,7 @@
                                     <select name="mapping[{{ $field }}]" class="form-select field-mapping-select" data-field="{{ $field }}">
                                         <option value="">-- لا يوجد --</option>
                                         @foreach($headers as $header)
-                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header || (empty($autoMapping[$field]) && $loop->first && in_array($field, ['guardian_card_id', 'guardian_name', 'guardian_marital_status', 'name']))) ? 'selected' : '' }}>
+                                            <option value="{{ $header }}" {{ (old("mapping.$field") == $header || ($autoMapping[$field] ?? null) == $header) ? 'selected' : '' }}>
                                                 {{ $header }}
                                             </option>
                                         @endforeach
@@ -182,7 +182,7 @@
                     </div>
                     <div class="card-footer bg-light text-muted" style="font-size:0.82rem; padding:8px 16px;">
                         <i class="fas fa-info-circle me-1"></i>
-                        ملاحظة: الأشخاص غير المتزوجين في هذه القائمة لن يتم إنشاء عائلة جديدة لهم؛ سيتم إضافتهم كأفراد فقط إلى عائلة رب الأسرة الموجود.
+                        سيتم إنشاء أولياء أمور جدد تلقائياً عند الحاجة وربط الأفراد بهم حسب رقم الهوية.
                     </div>
                 </div>
             @endif
