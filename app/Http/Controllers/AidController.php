@@ -112,6 +112,10 @@ class AidController extends Controller
 
     public function update(Request $request, AidDistribution $aid)
     {
+        if (!auth()->user()->canAccessCamp($aid->camp_id)) {
+            abort(403, 'غير مصرح لك بهذا الإجراء');
+        }
+
         $campId = (int) $request->input('camp_id');
 
         if (!auth()->user()->canAccessCamp($campId)) {

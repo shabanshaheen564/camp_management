@@ -18,7 +18,7 @@ Route::get('/', fn() => view('welcome'))->name('home');
 
 // تسجيل الدخول والخروج
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // المسارات المحمية (تحتاج تسجيل دخول)
@@ -45,7 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/families-trash', [FamilyController::class, 'trash'])->middleware('permission:guardian.view-trash')->name('families.trash');
     Route::patch('/families-trash/{id}/restore', [FamilyController::class, 'restore'])->middleware('permission:guardian.restore')->name('families.restore');
     Route::delete('/families-trash/{id}/force-delete', [FamilyController::class, 'forceDelete'])->middleware('permission:guardian.force-delete')->name('families.force-delete');
-    Route::get('/families/{guardian}/members-list', [FamilyController::class, 'getMembersList'])->name('families.members-list');
+    Route::get('/families/{guardian}/members-list', [FamilyController::class, 'getMembersList'])->middleware('permission:family_member.view')->name('families.members-list');
     Route::post('/families/{guardian}/members', [FamilyController::class, 'storeMember'])->middleware('permission:family_member.create')->name('families.store-member');
     Route::delete('/families/members/{member}', [FamilyController::class, 'destroyMember'])->middleware('permission:family_member.delete')->name('families.destroy-member');
 

@@ -76,6 +76,8 @@ class CampController extends Controller
 
     public function update(Request $request, Camp $camp)
     {
+        $this->authorizeCampAccess($camp->id);
+
         $request->validate([
             'name'     => 'required|string|max:255',
             'location' => 'required|string|max:255',
@@ -111,6 +113,8 @@ class CampController extends Controller
 
     public function destroy(Camp $camp)
     {
+        $this->authorizeCampAccess($camp->id);
+
         foreach ($camp->guardians as $guardian) {
             $guardian->familyMembers()->delete();
         }
@@ -149,7 +153,7 @@ class CampController extends Controller
         }
   
         $totalFamilies    = $camp->guardians()->count();
-        $totalIndividuals = $camp->guardians()->sum('family_member_number');
+        $totalIndividuals = $totalFamilies + $camp->guardians()->sum('family_member_number');
   
         return response()->json([
             'total_families'    => $totalFamilies,

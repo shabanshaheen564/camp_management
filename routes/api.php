@@ -7,7 +7,7 @@ use App\Http\Controllers\FamilyMemberController;
 use App\Http\Controllers\NotificationController;
 
 // تسجيل الدخول (بدون Authentication)
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // كل الطلبات الأخرى تحتاج توكن
 Route::middleware('auth:sanctum')->group(function () {

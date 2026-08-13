@@ -6,8 +6,8 @@ use App\Models\AidDistribution;
 use App\Models\Camp;
 use App\Models\FamilyMember;
 use App\Models\Guardian;
+use App\Support\AgeGroupQuery;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -29,7 +29,7 @@ class ReportController extends Controller
                 ->orderByDesc('guardians_count')
                 ->take(8)
                 ->get()
-                ->map(fn($c) => [
+                ->map(fn ($c) => [
                     'name'  => $c->name,
                     'count' => $c->guardians_count,
                 ]);
@@ -39,6 +39,7 @@ class ReportController extends Controller
                 $count = AidDistribution::whereYear('distribution_date', $date->year)
                     ->whereMonth('distribution_date', $date->month)
                     ->count();
+
                 return [
                     'month' => $date->translatedFormat('M Y'),
                     'count' => $count,
@@ -50,28 +51,20 @@ class ReportController extends Controller
                 $count = Guardian::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+
                 return [
                     'month' => $date->translatedFormat('M Y'),
                     'count' => $count,
                 ];
             });
 
-            $ageGroups = [
-                'أقل من 18' => FamilyMember::whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
-                '18 - 35' => FamilyMember::whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
-                '36 - 60' => FamilyMember::whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
-                'أكبر من 60' => FamilyMember::whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
-            ];
+            $ageGroups = AgeGroupQuery::counts(FamilyMember::query());
         } else {
             $campId = $user->camp_id;
 
             $totalCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
             $totalFamilies = Guardian::where('camp_id', $campId)->count();
-            $totalMembers  = FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))->count();
+            $totalMembers  = FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $campId))->count();
             $totalPersons  = $totalFamilies + $totalMembers;
             $totalAids     = AidDistribution::where('camp_id', $campId)->count();
 
@@ -83,7 +76,7 @@ class ReportController extends Controller
                 ->orderByDesc('guardians_count')
                 ->take(8)
                 ->get()
-                ->map(fn($c) => [
+                ->map(fn ($c) => [
                     'name'  => $c->name,
                     'count' => $c->guardians_count,
                 ]);
@@ -94,6 +87,7 @@ class ReportController extends Controller
                     ->whereYear('distribution_date', $date->year)
                     ->whereMonth('distribution_date', $date->month)
                     ->count();
+
                 return [
                     'month' => $date->translatedFormat('M Y'),
                     'count' => $count,
@@ -106,26 +100,16 @@ class ReportController extends Controller
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
+
                 return [
                     'month' => $date->translatedFormat('M Y'),
                     'count' => $count,
                 ];
             });
 
-            $ageGroups = [
-                'أقل من 18' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
-                    ->whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
-                '18 - 35' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
-                    ->whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
-                '36 - 60' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
-                    ->whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
-                'أكبر من 60' => FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))
-                    ->whereNotNull('date_of_birth')
-                    ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
-            ];
+            $ageGroups = AgeGroupQuery::counts(
+                FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $campId))
+            );
         }
 
         return view('camp_management.reports', compact(
@@ -134,9 +118,6 @@ class ReportController extends Controller
         ));
     }
 
-    /**
-     * Show printable statistics report.
-     */
     public function printStatistics()
     {
         $user = auth()->user();
@@ -152,11 +133,13 @@ class ReportController extends Controller
                 ->withCount('guardians')
                 ->orderBy('name')
                 ->get();
+
+            $ageGroups = AgeGroupQuery::counts(FamilyMember::query());
         } else {
             $campId = $user->camp_id;
             $totalCamps    = Camp::where('is_active', true)->where('id', $campId)->count();
             $totalFamilies = Guardian::where('camp_id', $campId)->count();
-            $totalMembers  = FamilyMember::whereHas('guardian', fn($q) => $q->where('camp_id', $campId))->count();
+            $totalMembers  = FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $campId))->count();
             $totalPersons  = $totalFamilies + $totalMembers;
             $totalAids     = AidDistribution::where('camp_id', $campId)->count();
 
@@ -165,18 +148,11 @@ class ReportController extends Controller
                 ->withCount('guardians')
                 ->orderBy('name')
                 ->get();
-        }
 
-        $ageGroups = [
-            'أقل من 18' => FamilyMember::whereNotNull('date_of_birth')
-                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) < 18")->count(),
-            '18 - 35' => FamilyMember::whereNotNull('date_of_birth')
-                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 18 AND 35")->count(),
-            '36 - 60' => FamilyMember::whereNotNull('date_of_birth')
-                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) BETWEEN 36 AND 60")->count(),
-            'أكبر من 60' => FamilyMember::whereNotNull('date_of_birth')
-                ->whereRaw("EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) > 60")->count(),
-        ];
+            $ageGroups = AgeGroupQuery::counts(
+                FamilyMember::whereHas('guardian', fn ($q) => $q->where('camp_id', $campId))
+            );
+        }
 
         $totalDisplaced = $totalFamilies + $totalMembers;
 
@@ -186,9 +162,6 @@ class ReportController extends Controller
         ));
     }
 
-    /**
-     * Export camps list as CSV for opening in Excel.
-     */
     public function exportCamps()
     {
         $user = auth()->user();
@@ -233,9 +206,6 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * Export families for a specific camp as CSV.
-     */
     public function exportFamilies(Request $request)
     {
         $user = auth()->user();
@@ -289,9 +259,6 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * Export family members for a specific camp as CSV.
-     */
     public function exportMembers(Request $request)
     {
         $user = auth()->user();
@@ -306,7 +273,7 @@ class ReportController extends Controller
                 $q->where('camp_id', $user->camp_id);
             }
         })->with('guardian');
-        
+
         $members = $query->orderBy('name')->get();
 
         $effectiveCampId = $user->isAdmin() ? $campId : $user->camp_id;

@@ -28,7 +28,6 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // محاولة تسجيل الدخول
         if (!Auth::attempt($credentials)) {
             // إذا كان الطلب API (يتوقع JSON) نرجع رسالة JSON
             if ($request->expectsJson()) {
@@ -41,8 +40,19 @@ class AuthController extends Controller
             ])->withInput($request->only('email'));
         }
 
-        // المستخدم الذي تم تسجيل دخوله
         $user = Auth::user();
+
+        if (!$user->is_active) {
+            Auth::logout();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'حسابك معطّل. تواصل مع المسؤول.'], 403);
+            }
+
+            return back()->withErrors([
+                'email' => 'حسابك معطّل. تواصل مع المسؤول.',
+            ])->withInput($request->only('email'));
+        }
 
         // ============================
         // إذا كان الطلب API

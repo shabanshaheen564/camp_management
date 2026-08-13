@@ -19,9 +19,7 @@ class FamilyMemberController extends Controller
      */
     public function byGuardian(Guardian $guardian)
     {
-        if (auth()->user()->camp_id !== $guardian->camp_id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
+        $this->authorizeGuardianAccess($guardian, expectsJson: true);
 
         return response()->json($guardian->familyMembers()->get());
     }
@@ -46,9 +44,7 @@ class FamilyMemberController extends Controller
         ]);
 
         $guardian = Guardian::findOrFail($data['guardian_id']);
-        if (auth()->user()->camp_id !== $guardian->camp_id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
+        $this->authorizeGuardianAccess($guardian, expectsJson: true);
 
         $member = FamilyMember::create($data);
         return response()->json($member, 201);
@@ -60,10 +56,7 @@ class FamilyMemberController extends Controller
      */
     public function destroy(FamilyMember $member)
     {
-        $guardian = Guardian::findOrFail($member->guardian_id);
-        if (auth()->user()->camp_id !== $guardian->camp_id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
+        $this->authorizeFamilyMemberAccess($member, expectsJson: true);
 
         $member->delete();
         return response()->json(['message' => 'تم الحذف']);
@@ -86,9 +79,7 @@ class FamilyMemberController extends Controller
      */
     public function apiImportPreview(Request $request, Camp $camp)
     {
-        if (auth()->user()->camp_id !== $camp->id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
+        $this->authorizeCampAccess($camp->id, expectsJson: true);
 
         $request->validate([
             'file' => ['required', 'file', 'max:10240', function ($attribute, $value, $fail) {
@@ -182,9 +173,7 @@ class FamilyMemberController extends Controller
      */
     public function apiImportExecute(Request $request, Camp $camp)
     {
-        if (auth()->user()->camp_id !== $camp->id) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
+        $this->authorizeCampAccess($camp->id, expectsJson: true);
 
         $data = $request->validate([
             'mapping' => 'required|array',
@@ -255,9 +244,7 @@ class FamilyMemberController extends Controller
      */
    public function apiExport(Camp $camp)
 {
-    if (auth()->user()->camp_id !== $camp->id) {
-        return response()->json(['message' => 'غير مصرح'], 403);
-    }
+    $this->authorizeCampAccess($camp->id, expectsJson: true);
 
     $members = FamilyMember::whereHas('guardian', function ($q) use ($camp) {
         $q->where('camp_id', $camp->id);

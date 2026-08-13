@@ -17,7 +17,7 @@ class CheckPermission
     {
         $user = $request->user();
 
-        if (!$user || !$user->isAdmin() && !$user->hasPermission($permission)) {
+        if (!$user || (!$user->isAdmin() && !$user->hasPermission($permission))) {
             abort(403, 'غير مصرح لك بهذا الإجراء');
         }
 
