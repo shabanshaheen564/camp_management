@@ -44,6 +44,23 @@ php artisan serve
 
 > **مهم:** غيّر كلمات المرور قبل النشر على الإنتاج.
 
+## الإنتاج (Render + Neon PostgreSQL)
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+DB_CONNECTION=pgsql
+DB_SSLMODE=require
+CACHE_STORE=file
+SESSION_DRIVER=file
+```
+
+> **مهم على Render:** تأكد أن `CACHE_STORE=file` و `SESSION_DRIVER=file` في Environment Variables.  
+> استخدام `database` للـ cache مع Neon pooler يسبب خطأ `SQLSTATE[25P02]`.
+
+- استخدم host الـ **pooler** (`-pooler` في الاسم) للتطبيق على Render
+- نفّذ migrations على الاتصال **المباشر** (بدون pooler) من Neon dashboard
+
 ## API (Flutter)
 
 ```http
