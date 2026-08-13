@@ -440,6 +440,9 @@ class FamilyMemberController extends Controller
         $nameParts = $this->parseFullName($name);
         $maritalColumn = $preferGuardianColumns ? ($mapping['guardian_marital_status'] ?? null) : null;
         $maritalRaw = trim((string) ($row[$maritalColumn ?? ''] ?? ''));
+        if ($maritalRaw === '' && !empty($mapping['marital_status'])) {
+            $maritalRaw = trim((string) ($row[$mapping['marital_status']] ?? ''));
+        }
 
         $payload = [
             'camp_id'              => $campId,
@@ -584,11 +587,8 @@ class FamilyMemberController extends Controller
         }
 
         $data = [
-            'guardian_id'    => $guardian->id,
-            'name'           => $name,
-            'marital_status' => in_array($guardian->marital_status, ['married', 'divorced', 'widowed'], true)
-                ? $guardian->marital_status
-                : 'single',
+            'guardian_id' => $guardian->id,
+            'name'        => $name,
         ];
 
         foreach ($mapping as $dbField => $excelColumn) {
@@ -605,6 +605,22 @@ class FamilyMemberController extends Controller
             }
 
             $data[$dbField] = $value;
+        }
+
+        if (empty($data['marital_status'])) {
+            $rawMarital = '';
+
+            if (!empty($mapping['marital_status'])) {
+                $rawMarital = trim((string) ($row[$mapping['marital_status']] ?? ''));
+            } elseif (!empty($mapping['guardian_marital_status'])) {
+                $rawMarital = trim((string) ($row[$mapping['guardian_marital_status']] ?? ''));
+            }
+
+            $data['marital_status'] = $rawMarital !== ''
+                ? $this->normalizeMaritalStatus($rawMarital)
+                : (in_array($guardian->marital_status, ['married', 'divorced', 'widowed'], true)
+                    ? $guardian->marital_status
+                    : 'single');
         }
 
         if ($memberCardId !== '') {
@@ -641,10 +657,11 @@ class FamilyMemberController extends Controller
         }
 
         return match ($dbField) {
-            'gender' => $this->normalizeGender($value),
-            'date_of_birth' => $this->normalizeDate($value),
-            'is_disabled' => $this->normalizeDisabled($value),
-            default => (string) $value,
+            'gender'         => $this->normalizeGender($value),
+            'date_of_birth'  => $this->normalizeDate($value),
+            'is_disabled'    => $this->normalizeDisabled($value),
+            'marital_status' => $this->normalizeMaritalStatus((string) $value),
+            default          => (string) $value,
         };
     }
 

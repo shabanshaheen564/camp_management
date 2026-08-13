@@ -33,6 +33,7 @@ class ImportColumnMapper
             'gender'                  => 'الجنس',
             'date_of_birth'           => 'تاريخ الميلاد',
             'nationality'             => 'الجنسية',
+            'marital_status'          => 'الحالة الاجتماعية للفرد',
             'relationship'            => 'صلة القرابة',
             'phone_number'            => 'الهاتف',
             'is_disabled'             => 'ذوي الاحتياجات',
@@ -78,6 +79,7 @@ class ImportColumnMapper
             'gender'                  => ['gender', 'جنس', 'sex', 'ذكر', 'أنثى'],
             'date_of_birth'           => ['birth', 'dob', 'الميلاد', 'تاريخ الميلاد', 'date of birth'],
             'nationality'             => ['nationality', 'جنسية', 'country'],
+            'marital_status'          => ['member marital', 'marital status', 'حالة اجتماعية', 'الحالة الاجتماعية', 'social status', 'أعزب', 'متزوج', 'مطلق', 'أرمل', 'single', 'married', 'divorced', 'widowed', 'غير متزوج'],
             'relationship'            => ['relationship', 'صلة', 'قرابة', 'relation', 'kinship'],
             'phone_number'            => ['phone', 'هاتف', 'موبايل', 'mobile', 'tel', 'جوال'],
             'is_disabled'             => ['disabled', 'احتياجات', 'disability', 'اعاقة', 'ذوي'],
@@ -162,6 +164,19 @@ class ImportColumnMapper
 
             if (str_contains($headerLower, 'guardian') || str_contains($headerLower, 'رب')) {
                 $score -= 6;
+            }
+        }
+
+        if ($field === 'marital_status' && $score > 0) {
+            if (str_contains($headerLower, 'guardian')
+                || str_contains($headerLower, 'رب')
+                || str_contains($headerLower, 'ولي')
+                || str_contains($headerLower, 'parent')) {
+                $score -= 8;
+            }
+
+            if (str_contains($headerLower, 'member') || str_contains($headerLower, 'فرد')) {
+                $score += 4;
             }
         }
 
