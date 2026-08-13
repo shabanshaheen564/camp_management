@@ -52,11 +52,13 @@ APP_DEBUG=false
 DB_CONNECTION=pgsql
 DB_SSLMODE=require
 CACHE_STORE=file
-SESSION_DRIVER=file
+SESSION_DRIVER=database
+SESSION_SECURE_COOKIE=true
 ```
 
-> **مهم على Render:** تأكد أن `CACHE_STORE=file` و `SESSION_DRIVER=file` في Environment Variables.  
-> استخدام `database` للـ cache مع Neon pooler يسبب خطأ `SQLSTATE[25P02]`.
+> **مهم على Render:**  
+> - `CACHE_STORE=file` — يمنع خطأ Neon pooler على الـ throttle  
+> - `SESSION_DRIVER=database` — **لا تغيّره لـ file** وإلا تسجيل الدخول يعطي "انتهت صلاحية الصفحة"
 
 - استخدم host الـ **pooler** (`-pooler` في الاسم) للتطبيق على Render
 - نفّذ migrations على الاتصال **المباشر** (بدون pooler) من Neon dashboard
