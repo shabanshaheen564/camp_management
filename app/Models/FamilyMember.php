@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class FamilyMember extends Model
 {
@@ -86,16 +87,36 @@ class FamilyMember extends Model
         if ($minAge) {
             $query->whereDate('date_of_birth', '<=', now()->subYears($minAge));
         }
-        
+
         if ($maxAge) {
             $query->whereDate('date_of_birth', '>=', now()->subYears($maxAge + 1));
         }
-        
+
         return $query;
     }
 
     protected static function booted()
     {
+        // Capacity must also be enforced for API/import paths that create
+        // FamilyMember directly and therefore bypass FamilyController.
+        static::creating(function ($familyMember) {
+            $guardian = $familyMember->guardian()->with('camp')->first();
+
+            if (!$guardian || !$guardian->camp) {
+                return;
+            }
+
+            $camp = $guardian->camp;
+            $currentPeople = $camp->guardians()->count()
+                + $camp->guardians()->withCount('familyMembers')->get()->sum('family_members_count');
+
+            if ($currentPeople >= $camp->capacity) {
+                throw ValidationException::withMessages([
+                    'guardian_id' => "لا يمكن إضافة الفرد. المخيم ({$camp->name}) وصل إلى سعته القصوى ({$camp->capacity} شخص).",
+                ]);
+            }
+        });
+
         static::created(function ($familyMember) {
             if (!$familyMember->relationLoaded('guardian')) {
                 $familyMember->load('guardian.camp');
