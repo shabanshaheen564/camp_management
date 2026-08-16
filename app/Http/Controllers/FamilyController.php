@@ -83,6 +83,7 @@ class FamilyController extends Controller
         }
 
         $this->authorizeCampAccess((int) $campId);
+        $this->ensureCapacityForFamily((int) $campId, 1);
 
         $nameParts = $this->parseFullName($data['full_name']);
 
@@ -101,6 +102,8 @@ class FamilyController extends Controller
             'marital_status'       => $data['marital_status'] ?? 'single',
             'is_disabled'          => 0,
         ]);
+
+        $guardian->camp?->updateOccupancy();
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyCreatedNotification(
@@ -127,11 +130,18 @@ class FamilyController extends Controller
             'marital_status' => 'nullable|in:single,married,divorced,widowed',
         ]);
 
+        $oldCampId = (int) $family->camp_id;
         $campId = auth()->user()->isAdmin()
             ? ($data['camp_id'] ?? $family->camp_id)
             : auth()->user()->camp_id;
+        $campId = (int) $campId;
 
-        $this->authorizeCampAccess((int) $campId);
+        $this->authorizeCampAccess($campId);
+
+        if ($campId !== $oldCampId) {
+            $familySize = 1 + $family->familyMembers()->count();
+            $this->ensureCapacityForFamily($campId, $familySize);
+        }
 
         $nameParts = $this->parseFullName($data['full_name']);
 
@@ -144,9 +154,14 @@ class FamilyController extends Controller
             'card_id'        => $data['national_id'] ?? null,
             'gender'         => $data['gender'] ?? 'male',
             'phone'          => $data['phone'] ?? null,
-            'date_of_birth'  => $data['date_of_birth'],
+            'date_of_birth'  => $data['date_of_birth'] ?? null,
             'marital_status' => $data['marital_status'] ?? 'single',
         ]);
+
+        if ($oldCampId !== $campId) {
+            Camp::find($oldCampId)?->updateOccupancy();
+            Camp::find($campId)?->updateOccupancy();
+        }
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyUpdatedNotification(
@@ -164,10 +179,13 @@ class FamilyController extends Controller
         $this->authorizeGuardianAccess($family);
 
         $familyName = $family->full_name;
-        $campName = $family->camp?->name;
+        $camp = $family->camp;
+        $campName = $camp?->name;
 
         $family->familyMembers()->delete();
         $family->delete();
+
+        $camp?->updateOccupancy();
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyDeletedNotification($familyName, $campName)
@@ -206,8 +224,12 @@ class FamilyController extends Controller
         $family = Guardian::onlyTrashed()->findOrFail($id);
         $this->authorizeGuardianAccess($family);
 
+        $familySize = 1 + $family->familyMembers()->onlyTrashed()->count();
+        $this->ensureCapacityForFamily((int) $family->camp_id, $familySize);
+
         $family->familyMembers()->onlyTrashed()->restore();
         $family->restore();
+        $family->camp?->updateOccupancy();
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyRestoredNotification($family->full_name, $family->camp?->name)
@@ -239,15 +261,18 @@ class FamilyController extends Controller
         $this->authorizeGuardianAccess($guardian);
 
         $data = $request->validate([
-            'full_name'     => 'required|string|max:255',
-            'card_id'       => 'required|string|max:50|unique:family_members,card_id',
-            'nationality'   => 'required|string|max:100',
-            'gender'        => 'required|in:male,female',
-            'date_of_birth' => 'required|date',
-            'relationship'  => 'nullable|string|max:50',
-            'phone_number'  => 'nullable|string|max:20',
-            'is_disabled'   => 'nullable|boolean',
+            'full_name'       => 'required|string|max:255',
+            'card_id'         => 'required|string|max:50|unique:family_members,card_id',
+            'nationality'     => 'required|string|max:100',
+            'gender'          => 'required|in:male,female',
+            'date_of_birth'   => 'required|date',
+            'relationship'    => 'nullable|string|max:50',
+            'phone_number'    => 'nullable|string|max:20',
+            'is_disabled'     => 'nullable|boolean',
+            'marital_status'  => 'nullable|in:single,married,divorced,widowed',
         ]);
+
+        $this->ensureCapacityForFamily((int) $guardian->camp_id, 1);
 
         FamilyMember::create([
             'guardian_id'    => $guardian->id,
@@ -258,7 +283,7 @@ class FamilyController extends Controller
             'date_of_birth'  => $data['date_of_birth'],
             'phone_number'   => $data['phone_number'] ?? null,
             'is_disabled'    => isset($data['is_disabled']) ? 1 : 0,
-            'marital_status' => $guardian->marital_status === 'married' ? 'married' : 'single',
+            'marital_status' => $data['marital_status'] ?? 'single',
         ]);
 
         app(NotificationCenter::class)->notifyAdmins(
@@ -285,13 +310,35 @@ class FamilyController extends Controller
 
         $memberName = $member->name;
         $familyName = $member->guardian?->full_name;
+        $camp = $member->guardian?->camp;
 
         $member->delete();
+        $camp?->updateOccupancy();
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyMemberDeletedNotification($memberName, $familyName)
         );
 
         return back()->with('success', 'تم حذف الفرد بنجاح.');
+    }
+
+    /**
+     * Make sure a new person/family can fit in the selected camp.
+     * This is deliberately based on the real database count, not the cached
+     * current_occupancy value, so stale occupancy cannot accidentally block
+     * or allow an operation.
+     */
+    protected function ensureCapacityForFamily(int $campId, int $additionalPeople): void
+    {
+        $camp = Camp::findOrFail($campId);
+
+        $currentPeople = $camp->guardians()->count()
+            + $camp->guardians()->withCount('familyMembers')->get()->sum('family_members_count');
+
+        if ($currentPeople + $additionalPeople > $camp->capacity) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'camp_id' => "لا يمكن تنفيذ العملية. سعة المخيم ({$camp->capacity}) لا تسمح بإضافة {$additionalPeople} شخص. الإشغال الحالي {$currentPeople} شخص.",
+            ]);
+        }
     }
 }
