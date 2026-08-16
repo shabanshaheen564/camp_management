@@ -52,17 +52,11 @@ class Camp extends Model
         return $this->hasMany(Guardian::class);
     }
 
-    /**
-     * Get aid distributions for this camp
-     */
     public function aidDistributions(): HasMany
     {
         return $this->hasMany(AidDistribution::class);
     }
 
-    /**
-     * Get active aid distributions
-     */
     public function activeAidDistributions(): HasMany
     {
         return $this->aidDistributions()->where('status', 'active');
@@ -83,6 +77,10 @@ class Camp extends Model
         return max(0, $this->capacity - $this->current_occupancy);
     }
 
+    /**
+     * Recalculate occupancy from the actual family/member records and keep
+     * the human-facing status consistent with is_active and capacity.
+     */
     public function updateOccupancy(): void
     {
         $totalGuardians = $this->guardians()->count();
@@ -90,21 +88,20 @@ class Camp extends Model
             ->withCount('familyMembers')
             ->get()
             ->sum('family_members_count');
-        
+
         $this->current_occupancy = $totalGuardians + $totalFamilyMembers;
-        
-        if ($this->current_occupancy >= $this->capacity) {
+
+        if (!$this->is_active) {
+            $this->status = 'inactive';
+        } elseif ($this->current_occupancy >= $this->capacity) {
             $this->status = 'full';
-        } elseif ($this->current_occupancy > 0) {
+        } else {
             $this->status = 'active';
         }
-        
+
         $this->save();
     }
 
-    /**
-     * Scope for active camps
-     */
     public function scopeActive($query)
     {
         return PgBoolean::where($query, $this->getTable().'.is_active', true);
