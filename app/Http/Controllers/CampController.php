@@ -12,6 +12,7 @@ use App\Support\ImportColumnMapper;
 use App\Support\ImportSpreadsheetReader;
 use App\Support\NotificationSections;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CampController extends Controller
 {
@@ -63,12 +64,13 @@ class CampController extends Controller
             'manager'     => $request->manager,
             'phone'       => $request->phone,
             'capacity'    => $request->capacity,
-            'status'      => $request->status,
+            'status'      => $request->is_active ? 'active' : 'inactive',
             'latitude'    => $request->latitude,
             'longitude'   => $request->longitude,
             'is_active'   => $request->is_active,
             'description' => $request->description,
             'created_by'  => auth()->id(),
+            'current_occupancy' => 0,
         ]);
 
         app(NotificationCenter::class)->notifyAdmins(
@@ -94,25 +96,35 @@ class CampController extends Controller
             'is_active'=> 'required|boolean',
         ]);
 
+        $currentPeople = $camp->guardians()->count()
+            + $camp->guardians()->withCount('familyMembers')->get()->sum('family_members_count');
+
+        if ((int) $request->capacity < $currentPeople) {
+            throw ValidationException::withMessages([
+                'capacity' => "لا يمكن جعل سعة المخيم ({$request->capacity}) أقل من الإشغال الحالي ({$currentPeople} شخص).",
+            ]);
+        }
+
         $camp->update([
-        'name'        => $request->name,
-        'location'    => $request->location,
-        'manager'     => $request->manager,
-        'phone'       => $request->phone,
-        'capacity'    => $request->capacity,
-        'status'      => $request->status,
-        'latitude'    => $request->latitude,
-        'longitude'   => $request->longitude,
-        'is_active'   => $request->is_active,
-        'description' => $request->description,
-    ]);
+            'name'        => $request->name,
+            'location'    => $request->location,
+            'manager'     => $request->manager,
+            'phone'       => $request->phone,
+            'capacity'    => $request->capacity,
+            'latitude'    => $request->latitude,
+            'longitude'   => $request->longitude,
+            'is_active'   => $request->is_active,
+            'description' => $request->description,
+        ]);
 
-    app(NotificationCenter::class)->notifyAdmins(
-        new CampUpdatedNotification($camp->name, $camp->location)
-    );
+        $camp->updateOccupancy();
 
-    return redirect()->route('camps.index')->with('success', 'تم تحديث المخيم بنجاح');
-}
+        app(NotificationCenter::class)->notifyAdmins(
+            new CampUpdatedNotification($camp->name, $camp->location)
+        );
+
+        return redirect()->route('camps.index')->with('success', 'تم تحديث المخيم بنجاح');
+    }
 
     public function destroy(Camp $camp)
     {
@@ -141,31 +153,30 @@ class CampController extends Controller
         }
 
         $camp->update(['is_active' => !$camp->is_active]);
+        $camp->updateOccupancy();
+
         $status = $camp->is_active ? 'تم تفعيل المخيم' : 'تم تعليق المخيم';
         return back()->with('success', $status);
     }
+
     public function show(Camp $camp)
     {
         if (!auth()->user()->canAccessCamp($camp->id)) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
- 
+
         return response()->json($camp);
     }
- 
-    /**
-     * إحصائيات المخيم
-     * GET /api/camps/{id}/statistics
-     */
+
     public function statistics(Camp $camp)
     {
         if (!auth()->user()->canAccessCamp($camp->id)) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
-  
+
         $totalFamilies    = $camp->guardians()->count();
         $totalIndividuals = $totalFamilies + $camp->guardians()->sum('family_member_number');
-  
+
         return response()->json([
             'total_families'    => $totalFamilies,
             'total_individuals' => $totalIndividuals,
@@ -173,17 +184,11 @@ class CampController extends Controller
         ]);
     }
 
-    /**
-     * Show import form.
-     */
     public function showImportForm()
     {
         return view('camp_management.camps_import');
     }
 
-    /**
-     * Preview Excel file and show column mapping.
-     */
     public function importPreview(Request $request)
     {
         $request->validate([
@@ -205,9 +210,6 @@ class CampController extends Controller
         return view('camp_management.camps_import_map', compact('headers', 'rows', 'dbFields', 'autoMapping'));
     }
 
-    /**
-     * Execute import with column mapping.
-     */
     public function importExecute(Request $request)
     {
         $request->validate([
@@ -265,8 +267,11 @@ class CampController extends Controller
         $camp = Camp::where('name', $name)->first();
         if ($camp) {
             $camp->update($data);
+            $camp->updateOccupancy();
             $results['updated']++;
         } else {
+            $data['current_occupancy'] = 0;
+            $data['status'] = ($data['is_active'] ?? true) ? 'active' : 'inactive';
             Camp::create($data);
             $results['created']++;
         }
