@@ -10,10 +10,18 @@ abstract class Controller
     protected function denyCampAccess(bool $expectsJson = false): never
     {
         if ($expectsJson) {
-            abort(response()->json(['message' => 'غير مصرح'], 403));
+            abort(response()->json([
+                'authorized' => false,
+                'message' => 'غير مصرح لك بالوصول إلى هذا المخيم',
+            ], 403));
         }
 
-        abort(403, 'غير مصرح لك بهذا الإجراء');
+        abort(
+            redirect()->back()->with(
+                'error',
+                'غير مصرح لك بالوصول إلى هذا المخيم'
+            )
+        );
     }
 
     protected function authorizeCampAccess(int $campId, bool $expectsJson = false): void
