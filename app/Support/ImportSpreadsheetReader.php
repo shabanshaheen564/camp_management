@@ -3,8 +3,8 @@
 namespace App\Support;
 
 use Illuminate\Http\UploadedFile;
-use SimpleXLS;
-use SimpleXLSX;
+use Shuchkin\SimpleXLS;
+use Shuchkin\SimpleXLSX;
 
 class ImportSpreadsheetReader
 {
