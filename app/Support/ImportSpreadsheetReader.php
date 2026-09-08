@@ -63,8 +63,11 @@ class ImportSpreadsheetReader
     }
 
     /**
-     * Read CSV files with UTF-8/UTF-16 BOM handling and common delimiters.
-     * Delimiter detection supports comma, semicolon, tab and pipe.
+     * Read CSV files with UTF-8/UTF-16 BOM handling and automatic delimiter
+     * detection. The detector intentionally looks at several non-empty lines
+     * and rewards a delimiter that produces the same number of columns across
+     * the sample. This prevents a comma occurring inside a value from winning
+     * over the actual semicolon/tab/pipe delimiter.
      */
     private static function readCsv(string $path): array
     {
@@ -111,25 +114,59 @@ class ImportSpreadsheetReader
     private static function detectCsvDelimiter($handle): string
     {
         $candidates = [',', ';', "\t", '|'];
-        $bestDelimiter = ',';
-        $bestScore = 1;
+        $sampleLines = [];
+        $maxSampleLines = 10;
 
-        while (($line = fgets($handle)) !== false) {
+        while (count($sampleLines) < $maxSampleLines && ($line = fgets($handle)) !== false) {
             if (trim($line) === '') {
                 continue;
             }
 
-            foreach ($candidates as $candidate) {
-                $fields = str_getcsv($line, $candidate);
-                $score = count($fields);
+            $sampleLines[] = $line;
+        }
 
-                if ($score > $bestScore) {
-                    $bestScore = $score;
-                    $bestDelimiter = $candidate;
+        if ($sampleLines === []) {
+            return ',';
+        }
+
+        $bestDelimiter = ',';
+        $bestScore = -INF;
+
+        foreach ($candidates as $candidate) {
+            $counts = [];
+
+            foreach ($sampleLines as $line) {
+                $fields = str_getcsv($line, $candidate, '"', '\\');
+                $counts[] = count($fields);
+            }
+
+            $frequency = array_count_values($counts);
+            arsort($frequency);
+            $modeCount = (int) array_key_first($frequency);
+            $modeFrequency = (int) reset($frequency);
+
+            // A real delimiter should split at least one line into columns.
+            if ($modeCount < 2) {
+                continue;
+            }
+
+            $consistentLines = 0;
+            foreach ($counts as $count) {
+                if ($count === $modeCount) {
+                    $consistentLines++;
                 }
             }
 
-            break;
+            // Consistency is the primary signal. The small field-count factor
+            // breaks ties without allowing a single noisy line to dominate.
+            $score = ($consistentLines * 100000)
+                + ($modeFrequency * 1000)
+                + $modeCount;
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestDelimiter = $candidate;
+            }
         }
 
         return $bestDelimiter;
