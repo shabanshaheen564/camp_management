@@ -10,12 +10,15 @@ abstract class Controller
     protected function denyCampAccess(bool $expectsJson = false): never
     {
         if ($expectsJson) {
+            // The operation is denied, but the API returns a normal JSON response
+            // so mobile clients can show the Arabic message instead of a 403 screen.
             abort(response()->json([
                 'authorized' => false,
                 'message' => 'غير مصرح لك بالوصول إلى هذا المخيم',
-            ], 403));
+            ], 200));
         }
 
+        // Web users should get a normal application message, not Laravel's 403 page.
         abort(
             redirect()->back()->with(
                 'error',
