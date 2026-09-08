@@ -186,9 +186,12 @@ class ImportSpreadsheetReader
             return $contents;
         }
 
+        // mbstring uses CP1256/CP1252 as the portable names for the Windows
+        // Arabic/Western code pages. "Windows-1256" is not accepted by some
+        // PHP builds and causes mb_detect_encoding() to throw a ValueError.
         $encoding = mb_detect_encoding(
             $contents,
-            ['Windows-1256', 'ISO-8859-6', 'Windows-1252', 'ISO-8859-1'],
+            ['CP1256', 'ISO-8859-6', 'CP1252', 'ISO-8859-1'],
             true
         );
 
