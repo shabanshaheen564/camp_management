@@ -18,6 +18,15 @@ class AuthorizeImportCampRows
             return $next($request);
         }
 
+        // API imports also carry a target camp in the URL. Deny that target
+        // before the controller can return a 403 response.
+        $targetCamp = $request->route('camp');
+        if ($targetCamp instanceof Camp && !$user->canAccessCamp((int) $targetCamp->id)) {
+            return $this->deny($request, [
+                'غير مصرح لك بالوصول إلى المخيم: ' . $targetCamp->name,
+            ]);
+        }
+
         $mapping = $request->input('mapping', []);
         $campColumn = $mapping['guardian_camp'] ?? null;
 
