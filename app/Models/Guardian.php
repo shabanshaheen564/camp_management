@@ -36,6 +36,27 @@ class Guardian extends Model
         'deleted_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Guardian $guardian): void {
+            $user = auth()->user();
+
+            // Model-level protection keeps imports and direct writes consistent.
+            if (!$user || $user->isAdmin()) {
+                return;
+            }
+
+            $campId = (int) $guardian->camp_id;
+            if ($campId === 0 || !$user->canAccessCamp($campId)) {
+                $familyName = $guardian->full_name ?: ($guardian->card_id ?: 'غير معروفة');
+
+                throw new \RuntimeException(
+                    'غير مصرح للعائلة: ' . $familyName
+                );
+            }
+        });
+    }
+
     public function camp(): BelongsTo
     {
         return $this->belongsTo(Camp::class);
@@ -110,5 +131,4 @@ class Guardian extends Model
         
         return $query;
     }
-   
 }
