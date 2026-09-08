@@ -145,7 +145,6 @@ class ImportSpreadsheetReader
             $modeCount = (int) array_key_first($frequency);
             $modeFrequency = (int) reset($frequency);
 
-            // A real delimiter should split at least one line into columns.
             if ($modeCount < 2) {
                 continue;
             }
@@ -157,8 +156,6 @@ class ImportSpreadsheetReader
                 }
             }
 
-            // Consistency is the primary signal. The small field-count factor
-            // breaks ties without allowing a single noisy line to dominate.
             $score = ($consistentLines * 100000)
                 + ($modeFrequency * 1000)
                 + $modeCount;
@@ -186,18 +183,25 @@ class ImportSpreadsheetReader
             return $contents;
         }
 
-        // mbstring uses CP1256/CP1252 as the portable names for the Windows
-        // Arabic/Western code pages. "Windows-1256" is not accepted by some
-        // PHP builds and causes mb_detect_encoding() to throw a ValueError.
-        $encoding = mb_detect_encoding(
-            $contents,
-            ['CP1256', 'ISO-8859-6', 'CP1252', 'ISO-8859-1'],
-            true
-        );
+        // Do not use mb_detect_encoding() for legacy Arabic code pages.
+        // Supported encoding names differ between mbstring builds. iconv uses
+        // the platform charset database and avoids ValueError for unsupported
+        // mbstring aliases such as Windows-1256 or CP1256.
+        $legacyEncodings = [
+            'Windows-1256',
+            'ISO-8859-6',
+            'Windows-1252',
+            'ISO-8859-1',
+        ];
 
-        return $encoding
-            ? mb_convert_encoding($contents, 'UTF-8', $encoding)
-            : $contents;
+        foreach ($legacyEncodings as $encoding) {
+            $converted = @iconv($encoding, 'UTF-8//IGNORE', $contents);
+            if ($converted !== false && $converted !== '') {
+                return $converted;
+            }
+        }
+
+        return $contents;
     }
 
     /**
