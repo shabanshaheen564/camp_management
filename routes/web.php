@@ -41,7 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/families-trash/{id}/force-delete', [FamilyController::class, 'forceDelete'])->middleware('permission:guardian.force-delete')->name('families.force-delete');
     Route::get('/families/{guardian}/members-list', [FamilyController::class, 'getMembersList'])->middleware('permission:family_member.view')->name('families.members-list');
     Route::post('/families/{guardian}/members', [FamilyController::class, 'storeMember'])->middleware('permission:family_member.create')->name('families.store-member');
-    Route::delete('/families/members/{member}', [FamilyController::class, 'destroyMember'])->middleware('permission:family_member.delete')->name('families.destroy-member');
+    Route::delete('/families/members/{member}', [FamilyMemberController::class, 'destroyMember'])->middleware('permission:family_member.delete')->name('families.destroy-member');
 
     Route::get('/members/import', [FamilyMemberController::class, 'showImportForm'])->middleware('permission:import.families')->name('members.import.form');
     Route::post('/members/import/preview', [FamilyMemberController::class, 'importPreview'])->middleware('permission:import.families')->name('members.import.preview');
@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/camps-data', [MapController::class, 'campsData'])->name('camps.data');
         Route::get('/hospitals-data', [MapController::class, 'hospitalsData'])->name('hospitals.data');
         Route::post('/hospitals', [MapController::class, 'storeHospital'])->name('hospitals.store');
+        Route::post('/hospitals/import', [MapController::class, 'importHospitals'])->name('hospitals.import');
         Route::delete('/hospitals/{id}', [MapController::class, 'destroyHospital'])->name('hospitals.destroy');
     });
 
@@ -80,7 +81,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('roles', RoleController::class)->except(['show', 'create', 'edit']);
         Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->name('roles.toggle');
         Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->name('roles.permissions.show');
-        Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->name('roles.permissions.update');
+        Route::patch('/roles/{role}/permissions', [RoleController::class, 'updateRolePermissions'])->name('roles.permissions.update');
     });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
