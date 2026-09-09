@@ -81,7 +81,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('roles', RoleController::class)->except(['show', 'create', 'edit']);
         Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->name('roles.toggle');
         Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->name('roles.permissions.show');
-        Route::patch('/roles/{role}/permissions', [RoleController::class, 'updateRolePermissions'])->name('roles.permissions.update');
+        Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->name('roles.permissions.update');
     });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
