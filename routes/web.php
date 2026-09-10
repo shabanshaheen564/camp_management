@@ -34,8 +34,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/families', [FamilyController::class, 'index'])->middleware('permission:guardian.view')->name('families.index');
     Route::post('/families', [FamilyController::class, 'store'])->middleware('permission:guardian.create')->name('families.store');
-    Route::match(['put', 'patch'], '/families/{family}', [FamilyController::class, 'update'])->middleware('permission:guardian.update')->name('families.update');
-    Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->middleware('permission:guardian.delete')->name('families.destroy');
+    Route::match(['put', 'patch'], '/families/{guardian}', [FamilyController::class, 'update'])->middleware('permission:guardian.update')->name('families.update');
+    Route::delete('/families/{guardian}', [FamilyController::class, 'destroy'])->middleware('permission:guardian.delete')->name('families.destroy');
     Route::get('/families-trash', [FamilyController::class, 'trash'])->middleware('permission:guardian.view-trash')->name('families.trash');
     Route::patch('/families-trash/{id}/restore', [FamilyController::class, 'restore'])->middleware('permission:guardian.restore')->name('families.restore');
     Route::delete('/families-trash/{id}/force-delete', [FamilyController::class, 'forceDelete'])->middleware('permission:guardian.force-delete')->name('families.force-delete');
@@ -60,87 +60,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/export/families', [ReportController::class, 'exportFamilies'])->middleware('permission:report.export')->name('reports.export.families');
     Route::get('/reports/export/members', [ReportController::class, 'exportMembers'])->middleware('permission:report.export')->name('reports.export.members');
 
-    Route::get('/map', [MapController::class, 'index'])
-        ->middleware('permission:map.view')
-        ->middleware(function ($request, $next) {
-            $response = $next($request);
-
-            if ($response->headers->get('Content-Type') && str_contains($response->headers->get('Content-Type'), 'text/html')) {
-                $script = <<<'HTML'
-<script>
-(function () {
-    if (typeof L === 'undefined' || typeof map === 'undefined') return;
-
-    const baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19
-    });
-
-    const aerialMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: 19
-    });
-
-    const currentBaseLayers = [];
-    map.eachLayer(function (layer) {
-        if (layer instanceof L.TileLayer) currentBaseLayers.push(layer);
-    });
-
-    const currentBase = currentBaseLayers[0];
-    const overlays = {};
-
-    map.eachLayer(function (layer) {
-        if (!(layer instanceof L.TileLayer)) {
-            // Existing non-basemap layers remain untouched.
-        }
-    });
-
-    if (currentBase) {
-        const baseLayers = {
-            'الخريطة': currentBase,
-            'صورة جوية': aerialMap
-        };
-        L.control.layers(baseLayers, overlays, {
-            position: 'topright',
-            collapsed: false
-        }).addTo(map);
-    }
-})();
-</script>
-HTML;
-
-                $content = $response->getContent();
-                $response->setContent(str_replace('</body>', $script . "\n</body>", $content));
-            }
-
-            return $response;
-        })
-        ->name('map.index');
+    Route::get('/map', [MapController::class, 'index'])->middleware('permission:map.view')->name('map.index');
     Route::get('/map/data', [MapController::class, 'data'])->middleware('permission:map.view')->name('map.data');
     Route::prefix('map')->name('map.')->middleware('permission:map.manage')->group(function () {
-        Route::get('/camps-data', [MapController::class, 'campsData'])->name('camps.data');
         Route::get('/hospitals-data', [MapController::class, 'hospitalsData'])->name('hospitals.data');
         Route::post('/hospitals', [MapController::class, 'storeHospital'])->name('hospitals.store');
         Route::post('/hospitals/import', [MapController::class, 'importHospitals'])->name('hospitals.import');
-        Route::delete('/hospitals/{id}', [MapController::class, 'destroyHospital'])->name('hospitals.destroy');
-    });
-
-    Route::middleware('admin')->group(function () {
-        Route::resource('users', UserController::class)->except(['show', 'create', 'edit']);
-        Route::patch('/users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
-        Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions'])->name('users.permissions.show');
-        Route::patch('/users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.permissions.update');
-    });
-
-    Route::middleware('admin')->group(function () {
-        Route::resource('roles', RoleController::class)->except(['show', 'create', 'edit']);
-        Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->name('roles.toggle');
-        Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->name('roles.permissions.show');
-        Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->name('roles.permissions.update');
+        Route::delete('/hospitals/{hospital}', [MapController::class, 'destroyHospital'])->name('hospitals.destroy');
     });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
-    Route::patch('/notifications/sections/{section}/read', [NotificationController::class, 'markSectionRead'])->name('notifications.section.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+
+    Route::get('/users', [UserController::class, 'index'])->middleware('permission:user.view')->name('users.index');
+    Route::post('/users', [UserController::class, 'store'])->middleware('permission:user.create')->name('users.store');
+    Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->middleware('permission:user.update')->name('users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:user.delete')->name('users.destroy');
+    Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:user.manage')->name('users.toggle-status');
+    Route::get('/users/{user}/activity', [UserController::class, 'activity'])->middleware('permission:user.view')->name('users.activity');
+
+    Route::get('/roles', [RoleController::class, 'index'])->middleware('permission:role.view')->name('roles.index');
+    Route::post('/roles', [RoleController::class, 'store'])->middleware('permission:role.create')->name('roles.store');
+    Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.update')->name('roles.update');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.delete')->name('roles.destroy');
 });
