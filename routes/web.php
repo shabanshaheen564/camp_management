@@ -77,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->middleware('permission:user.update')->name('users.update');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:user.delete')->name('users.destroy');
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:user.manage')->name('users.toggle-status');
+    Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:user.manage')->name('users.toggle');
     Route::get('/users/{user}/activity', [UserController::class, 'activity'])->middleware('permission:user.view')->name('users.activity');
     Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions'])->middleware('permission:user.view')->name('users.permissions');
     Route::patch('/users/{user}/permissions', [UserController::class, 'updatePermissions'])->middleware('permission:user.update')->name('users.permissions.update');
