@@ -78,9 +78,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:user.delete')->name('users.destroy');
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:user.manage')->name('users.toggle-status');
     Route::get('/users/{user}/activity', [UserController::class, 'activity'])->middleware('permission:user.view')->name('users.activity');
+    Route::get('/users/{user}/permissions', [UserController::class, 'getPermissions'])->middleware('permission:user.view')->name('users.permissions');
+    Route::patch('/users/{user}/permissions', [UserController::class, 'updatePermissions'])->middleware('permission:user.update')->name('users.permissions.update');
 
     Route::get('/roles', [RoleController::class, 'index'])->middleware('permission:role.view')->name('roles.index');
     Route::post('/roles', [RoleController::class, 'store'])->middleware('permission:role.create')->name('roles.store');
     Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.update')->name('roles.update');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.delete')->name('roles.destroy');
+    Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->middleware('permission:role.update')->name('roles.toggle');
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->middleware('permission:role.view')->name('roles.permissions');
+    Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.update')->name('roles.permissions.update');
 });
