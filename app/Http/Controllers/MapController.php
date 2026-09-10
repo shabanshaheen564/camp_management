@@ -68,10 +68,217 @@ class MapController extends Controller
         color: #1d4ed8;
         font-weight: 700;
     }
+
+    .camp-hospital-place-btn,
+    .camp-hospital-shp-btn {
+        width: 100%;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #fff;
+        color: #2563eb;
+        padding: 7px 9px;
+        margin-bottom: 7px;
+        font-family: 'Cairo', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .camp-hospital-place-btn:hover,
+    .camp-hospital-shp-btn:hover {
+        background: #eff6ff;
+    }
+    .camp-hospital-place-btn.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+    }
+    .camp-hospital-import-status {
+        font-family: 'Cairo', sans-serif;
+        font-size: 11px;
+        color: #64748b;
+        margin: 3px 0 7px;
+        line-height: 1.5;
+    }
 </style>
 <script>
 (function () {
     if (typeof L === 'undefined' || !L.Map || !L.TileLayer) return;
+
+    let hospitalPlacementMode = false;
+    let hospitalPlacementGuardInstalled = false;
+
+    function setupHospitalControls(mapInstance) {
+        const hint = document.querySelector('#tab-hospitals .click-hint');
+        if (!hint || hint.dataset.hospitalControlsReady === '1') return;
+        hint.dataset.hospitalControlsReady = '1';
+
+        hint.innerHTML = '<i class="fas fa-info-circle"></i><span>اضغط زر تحديد الموقع أولًا، ثم اضغط على الخريطة</span>';
+
+        const placeButton = document.createElement('button');
+        placeButton.type = 'button';
+        placeButton.className = 'camp-hospital-place-btn';
+        placeButton.innerHTML = '<i class="fas fa-map-marker-alt me-1"></i>تحديد موقع المستشفى على الخريطة';
+        placeButton.addEventListener('click', function () {
+            hospitalPlacementMode = true;
+            placeButton.classList.add('active');
+            placeButton.innerHTML = '<i class="fas fa-crosshairs me-1"></i>اضغط الآن على موقع المستشفى';
+            hint.innerHTML = '<i class="fas fa-mouse-pointer"></i><span>وضع تحديد الموقع مفعل — اضغط على الخريطة</span>';
+            if (mapInstance.getContainer()) mapInstance.getContainer().style.cursor = 'crosshair';
+        });
+        hint.parentNode.insertBefore(placeButton, hint);
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.zip,.shp';
+        fileInput.multiple = false;
+        fileInput.style.display = 'none';
+        fileInput.id = 'hospital-shp-input';
+
+        const shpButton = document.createElement('button');
+        shpButton.type = 'button';
+        shpButton.className = 'camp-hospital-shp-btn';
+        shpButton.innerHTML = '<i class="fas fa-file-import me-1"></i>رفع Shapefile للمستشفيات';
+        shpButton.addEventListener('click', function () {
+            fileInput.click();
+        });
+
+        const status = document.createElement('div');
+        status.className = 'camp-hospital-import-status';
+        status.id = 'hospital-shp-status';
+
+        fileInput.addEventListener('change', async function (event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+
+            try {
+                if (typeof shp !== 'function') {
+                    throw new Error('مكتبة Shapefile غير متاحة');
+                }
+
+                status.textContent = 'جاري قراءة Shapefile...';
+                const geojson = await shp(await file.arrayBuffer());
+                const features = Array.isArray(geojson) ? geojson.flatMap(item => item.features || []) : (geojson.features || []);
+                const points = features.filter(feature =>
+                    feature && feature.geometry && feature.geometry.type === 'Point' &&
+                    Array.isArray(feature.geometry.coordinates) && feature.geometry.coordinates.length >= 2
+                );
+
+                if (!points.length) {
+                    throw new Error('لم يتم العثور على معالم Point داخل Shapefile');
+                }
+                if (points.length > 2000) {
+                    throw new Error('عدد المستشفيات يتجاوز الحد المسموح به وهو 2000');
+                }
+
+                const hospitals = points.map((feature, index) => {
+                    const props = feature.properties || {};
+                    const keys = Object.keys(props);
+                    const getValue = (names) => {
+                        const key = keys.find(k => names.includes(String(k).trim().toLowerCase()));
+                        return key ? props[key] : null;
+                    };
+
+                    const nameValue = getValue(['name', 'hospital', 'hospital_name', 'hosp_name', 'اسم', 'اسم المستشفى']);
+                    const phoneValue = getValue(['phone', 'telephone', 'tel', 'mobile', 'هاتف', 'رقم الهاتف']);
+                    const typeValue = getValue(['type', 'hospital_type', 'category', 'نوع', 'نوع المستشفى']);
+                    const name = nameValue !== null && String(nameValue).trim() !== ''
+                        ? String(nameValue).trim()
+                        : `مستشفى ${index + 1}`;
+
+                    return {
+                        name: name.substring(0, 255),
+                        latitude: Number(feature.geometry.coordinates[1]),
+                        longitude: Number(feature.geometry.coordinates[0]),
+                        phone: phoneValue === null || String(phoneValue).trim() === '' ? null : String(phoneValue).trim().substring(0, 50),
+                        type: typeValue === null || String(typeValue).trim() === '' ? 'عام' : String(typeValue).trim().substring(0, 100),
+                    };
+                });
+
+                const response = await fetch('{{ route("map.hospitals.import") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({ hospitals }),
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'تعذر استيراد المستشفيات');
+                }
+
+                (data.hospitals || []).forEach(function (hospital) {
+                    if (typeof addHospitalMarker === 'function') addHospitalMarker(hospital);
+                    if (typeof HOSPITALS_INIT !== 'undefined') HOSPITALS_INIT.push(hospital);
+                });
+
+                const count = document.getElementById('cnt-hosp');
+                if (count) count.textContent = String((parseInt(count.textContent || '0', 10) || 0) + Number(data.count || 0));
+
+                if (typeof switchTab === 'function') switchTab('hospitals');
+                status.textContent = `تم استيراد ${data.count || hospitals.length} مستشفى بنجاح.`;
+            } catch (error) {
+                console.error(error);
+                status.textContent = error.message || 'حدث خطأ أثناء استيراد Shapefile.';
+            }
+        });
+
+        hint.parentNode.insertBefore(shpButton, hint.nextSibling);
+        hint.parentNode.insertBefore(fileInput, hint.nextSibling);
+        hint.parentNode.insertBefore(status, hint.nextSibling);
+    }
+
+    function installHospitalPlacementGuard(mapInstance) {
+        if (hospitalPlacementGuardInstalled || !mapInstance || !mapInstance._events || !mapInstance._events.click) return;
+
+        const clickEvents = Array.isArray(mapInstance._events.click)
+            ? mapInstance._events.click.slice()
+            : [mapInstance._events.click];
+
+        const hospitalHandler = clickEvents.find(listener => {
+            const fn = listener && listener.fn;
+            if (typeof fn !== 'function') return false;
+            const source = Function.prototype.toString.call(fn);
+            return source.includes("getElementById('h-lat')") && source.includes("getElementById('h-lng')");
+        });
+
+        if (!hospitalHandler) return;
+
+        const originalHandler = hospitalHandler.fn;
+        const context = hospitalHandler.ctx;
+        mapInstance.off('click', originalHandler, context);
+        mapInstance.on('click', function (event) {
+            if (!hospitalPlacementMode) return;
+            originalHandler.call(this, event);
+            hospitalPlacementMode = false;
+
+            const button = document.querySelector('.camp-hospital-place-btn');
+            const hint = document.querySelector('#tab-hospitals .click-hint');
+            if (button) {
+                button.classList.remove('active');
+                button.innerHTML = '<i class="fas fa-map-marker-alt me-1"></i>تحديد موقع المستشفى على الخريطة';
+            }
+            if (hint) hint.innerHTML = '<i class="fas fa-check-circle"></i><span>تم تحديد الموقع. أكمل بيانات المستشفى ثم اضغط حفظ.</span>';
+            if (mapInstance.getContainer()) mapInstance.getContainer().style.cursor = '';
+        });
+
+        hospitalPlacementGuardInstalled = true;
+    }
+
+    L.Map.addInitHook(function () {
+        const mapInstance = this;
+        const finishSetup = function () {
+            setupHospitalControls(mapInstance);
+            installHospitalPlacementGuard(mapInstance);
+        };
+
+        setTimeout(finishSetup, 0);
+        setTimeout(finishSetup, 100);
+        setTimeout(finishSetup, 500);
+    });
 
     L.Map.addInitHook(function () {
         const mapInstance = this;
