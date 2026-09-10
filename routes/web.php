@@ -60,7 +60,62 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/export/families', [ReportController::class, 'exportFamilies'])->middleware('permission:report.export')->name('reports.export.families');
     Route::get('/reports/export/members', [ReportController::class, 'exportMembers'])->middleware('permission:report.export')->name('reports.export.members');
 
-    Route::get('/map', [MapController::class, 'index'])->middleware('permission:map.view')->name('map.index');
+    Route::get('/map', [MapController::class, 'index'])
+        ->middleware('permission:map.view')
+        ->middleware(function ($request, $next) {
+            $response = $next($request);
+
+            if ($response->headers->get('Content-Type') && str_contains($response->headers->get('Content-Type'), 'text/html')) {
+                $script = <<<'HTML'
+<script>
+(function () {
+    if (typeof L === 'undefined' || typeof map === 'undefined') return;
+
+    const baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    });
+
+    const aerialMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19
+    });
+
+    const currentBaseLayers = [];
+    map.eachLayer(function (layer) {
+        if (layer instanceof L.TileLayer) currentBaseLayers.push(layer);
+    });
+
+    const currentBase = currentBaseLayers[0];
+    const overlays = {};
+
+    map.eachLayer(function (layer) {
+        if (!(layer instanceof L.TileLayer)) {
+            // Existing non-basemap layers remain untouched.
+        }
+    });
+
+    if (currentBase) {
+        const baseLayers = {
+            'الخريطة': currentBase,
+            'صورة جوية': aerialMap
+        };
+        L.control.layers(baseLayers, overlays, {
+            position: 'topright',
+            collapsed: false
+        }).addTo(map);
+    }
+})();
+</script>
+HTML;
+
+                $content = $response->getContent();
+                $response->setContent(str_replace('</body>', $script . "\n</body>", $content));
+            }
+
+            return $response;
+        })
+        ->name('map.index');
     Route::get('/map/data', [MapController::class, 'data'])->middleware('permission:map.view')->name('map.data');
     Route::prefix('map')->name('map.')->middleware('permission:map.manage')->group(function () {
         Route::get('/camps-data', [MapController::class, 'campsData'])->name('camps.data');
