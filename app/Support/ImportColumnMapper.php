@@ -24,12 +24,12 @@ class ImportColumnMapper
     public static function memberFieldLabels(): array
     {
         return [
-            'guardian_card_id'        => 'رقم هوية رب الأسرة / ولي الأمر',
-            'guardian_name'           => 'اسم رب الأسرة',
+            'guardian_card_id'        => 'Guardian Card ID — رقم هوية رب الأسرة',
+            'guardian_name'           => 'Guardian Name — اسم رب الأسرة',
             'guardian_marital_status' => 'الحالة الاجتماعية لرب الأسرة',
             'guardian_camp'           => 'اسم المخيم',
             'name'                    => 'اسم الفرد',
-            'card_id'                 => 'رقم البطاقة / الهوية',
+            'card_id'                 => 'Member Card ID — رقم هوية الفرد',
             'gender'                  => 'الجنس',
             'date_of_birth'           => 'تاريخ الميلاد',
             'nationality'             => 'الجنسية',
@@ -70,12 +70,12 @@ class ImportColumnMapper
     private static function memberKeywords(): array
     {
         return [
-            'guardian_card_id'        => ['guardian card', 'guardian id', 'هوية رب الأسرة', 'هوية ولي الأمر', 'رقم هوية رب الأسرة', 'رب الأسرة', 'ولي الأمر', 'parent id', 'head id', 'رقم الهوية'],
-            'guardian_name'           => ['guardian name', 'اسم رب الأسرة', 'اسم ولي الأمر', 'ولي الأمر', 'parent name', 'اسم رب العائلة', 'head of household'],
-            'guardian_marital_status' => ['guardian marital', 'marital status guardian', 'حالة رب الأسرة', 'marital', 'حالة اجتماعية', 'social status', 'marital status'],
+            'guardian_card_id'        => ['guardian card id', 'guardian card', 'guardian id', 'رقم هوية رب الأسرة', 'رقم هوية رب الاسرة', 'هوية رب الأسرة', 'هوية رب الاسرة', 'هوية ولي الأمر', 'هوية ولي الامر', 'رقم هوية ولي الأمر', 'رقم هوية ولي الامر', 'parent id', 'parent card id', 'head id', 'head of household id'],
+            'guardian_name'           => ['guardian name', 'اسم رب الأسرة', 'اسم رب الاسرة', 'اسم ولي الأمر', 'اسم ولي الامر', 'parent name', 'اسم رب العائلة', 'head of household name'],
+            'guardian_marital_status' => ['guardian marital', 'marital status guardian', 'حالة رب الأسرة', 'حالة رب الاسرة', 'حالة ولي الأمر', 'حالة ولي الامر', 'guardian status', 'social status guardian'],
             'guardian_camp'           => ['camp', 'مخيم', 'اسم المخيم', 'المخيم', 'camp name'],
-            'name'                    => ['member name', 'full name', 'الاسم', 'اسم الفرد', 'الاسم الكامل', 'fullname', 'full_name', 'name'],
-            'card_id'                 => ['member card', 'member id', 'card id', 'رقم البطاقة', 'رقم الهوية', 'national id', 'id number', 'هوية'],
+            'name'                    => ['member name', 'full name', 'الاسم', 'اسم الفرد', 'الاسم الكامل', 'fullname', 'full_name', 'member', 'name'],
+            'card_id'                 => ['member card id', 'member card', 'member id', 'رقم هوية الفرد', 'هوية الفرد', 'رقم بطاقة الفرد', 'رقم البطاقة للفرد', 'card id', 'national id', 'id number', 'individual id', 'individual card id'],
             'gender'                  => ['gender', 'جنس', 'sex', 'ذكر', 'أنثى'],
             'date_of_birth'           => ['birth', 'dob', 'الميلاد', 'تاريخ الميلاد', 'date of birth'],
             'nationality'             => ['nationality', 'جنسية', 'country'],
@@ -123,7 +123,7 @@ class ImportColumnMapper
 
     private static function scoreHeader(string $field, string $header, array $keywords): int
     {
-        $headerLower = mb_strtolower($header, 'UTF-8');
+        $headerLower = mb_strtolower(trim($header), 'UTF-8');
         $score = 0;
         $isGuardianField = str_starts_with($field, 'guardian_');
 
@@ -139,10 +139,32 @@ class ImportColumnMapper
             }
         }
 
+        // Guardian Card ID must always prefer an explicit guardian/head-of-household
+        // identifier and must never be confused with the member's own card ID.
+        if ($field === 'guardian_card_id') {
+            $hasGuardianMarker = str_contains($headerLower, 'guardian')
+                || str_contains($headerLower, 'رب الأسرة')
+                || str_contains($headerLower, 'رب الاسرة')
+                || str_contains($headerLower, 'ولي الأمر')
+                || str_contains($headerLower, 'ولي الامر')
+                || str_contains($headerLower, 'parent')
+                || str_contains($headerLower, 'head of household')
+                || str_contains($headerLower, 'head id');
+
+            if ($hasGuardianMarker) {
+                $score += 12;
+            }
+
+            if (str_contains($headerLower, 'name')
+                || str_contains($headerLower, 'اسم')) {
+                $score -= 12;
+            }
+        }
+
         if ($isGuardianField && $score > 0) {
             $hasGuardianMarker = str_contains($headerLower, 'guardian')
                 || str_contains($headerLower, 'رب الأسرة')
-                || str_contains($headerLower, 'رب اسرة')
+                || str_contains($headerLower, 'رب الاسرة')
                 || str_contains($headerLower, 'ولي الأمر')
                 || str_contains($headerLower, 'ولي الامر')
                 || str_contains($headerLower, 'parent')
@@ -159,11 +181,17 @@ class ImportColumnMapper
                 || str_contains($headerLower, 'individual');
 
             if ($hasMemberMarker) {
-                $score += 4;
+                $score += 8;
             }
 
-            if (str_contains($headerLower, 'guardian') || str_contains($headerLower, 'رب')) {
-                $score -= 6;
+            if (str_contains($headerLower, 'guardian')
+                || str_contains($headerLower, 'رب الأسرة')
+                || str_contains($headerLower, 'رب الاسرة')
+                || str_contains($headerLower, 'ولي الأمر')
+                || str_contains($headerLower, 'ولي الامر')
+                || str_contains($headerLower, 'parent')
+                || str_contains($headerLower, 'head')) {
+                $score -= 10;
             }
         }
 
