@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
             font-family: 'Cairo', sans-serif;
@@ -24,31 +29,43 @@
         body::before {
             content: '';
             position: fixed;
-            width: 600px; height: 600px;
+            width: 600px;
+            height: 600px;
             background: rgba(59, 130, 246, 0.08);
             border-radius: 50%;
-            top: -200px; right: -200px;
+            top: -200px;
+            right: -200px;
             animation: float 8s ease-in-out infinite;
         }
+
         body::after {
             content: '';
             position: fixed;
-            width: 400px; height: 400px;
+            width: 400px;
+            height: 400px;
             background: rgba(16, 185, 129, 0.06);
             border-radius: 50%;
-            bottom: -100px; left: -100px;
+            bottom: -100px;
+            left: -100px;
             animation: float 10s ease-in-out infinite reverse;
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-30px) scale(1.05); }
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-30px) scale(1.05);
+            }
         }
 
         .welcome-card {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
             padding: 60px 50px;
             text-align: center;
@@ -60,24 +77,42 @@
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .logo-wrap {
-            width: 90px; height: 90px;
+            width: 90px;
+            height: 90px;
             background: linear-gradient(135deg, #3b82f6, #10b981);
             border-radius: 24px;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto 28px;
-            font-size: 2.4rem; color: white;
+            font-size: 2.4rem;
+            color: white;
             box-shadow: 0 20px 40px rgba(59, 130, 246, 0.4);
             animation: pulse 3s ease-in-out infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { box-shadow: 0 20px 40px rgba(59, 130, 246, 0.4); }
-            50% { box-shadow: 0 20px 60px rgba(59, 130, 246, 0.7); }
+
+            0%,
+            100% {
+                box-shadow: 0 20px 40px rgba(59, 130, 246, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 20px 60px rgba(59, 130, 246, 0.7);
+            }
         }
 
         h1 {
@@ -89,7 +124,7 @@
         }
 
         .subtitle {
-            color: rgba(255,255,255,0.6);
+            color: rgba(255, 255, 255, 0.6);
             font-size: 1rem;
             margin-bottom: 40px;
             line-height: 1.7;
@@ -103,8 +138,8 @@
 
         .stat-item {
             flex: 1;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 14px;
             padding: 16px 10px;
         }
@@ -117,7 +152,7 @@
         }
 
         .stat-label {
-            color: rgba(255,255,255,0.5);
+            color: rgba(255, 255, 255, 0.5);
             font-size: 0.78rem;
             margin-top: 4px;
         }
@@ -157,9 +192,9 @@
         }
 
         .feature-tag {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: rgba(255,255,255,0.6);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
             padding: 6px 14px;
             border-radius: 20px;
             font-size: 0.8rem;
@@ -168,9 +203,13 @@
             gap: 6px;
         }
 
-        .feature-tag i { color: #10b981; font-size: 0.7rem; }
+        .feature-tag i {
+            color: #10b981;
+            font-size: 0.7rem;
+        }
     </style>
 </head>
+
 <body>
     <div class="welcome-card">
         <div class="logo-wrap">
@@ -193,7 +232,9 @@
                 <div class="stat-label">متابعة العائلات</div>
             </div>
             <div class="stat-item">
-                <span class="stat-num"><i class="fas fa-box-heart" style="font-size:1.2rem; color:#f59e0b"></i></span>
+                <span class="stat-num">
+                    <i class="fas fa-box-open" style="font-size:1.2rem; color:#f59e0b"></i>
+                </span>
                 <div class="stat-label">توزيع المساعدات</div>
             </div>
         </div>
@@ -211,4 +252,5 @@
         </div>
     </div>
 </body>
+
 </html>
