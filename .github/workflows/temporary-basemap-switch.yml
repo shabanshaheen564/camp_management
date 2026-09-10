@@ -71,11 +71,9 @@ jobs:
 
           if old not in text:
               raise SystemExit('Target basemap code not found; refusing to modify the file.')
-
           text = text.replace(old, new, 1)
 
-          marker = """        /* ===== Popup ===== */
-"""
+          marker = "        /* ===== Popup ===== */\n"
           css = """        /* ===== Basemap switcher ===== */
         .basemap-switcher {
             background: rgba(255, 255, 255, .97);
@@ -86,14 +84,12 @@ jobs:
             direction: rtl;
             min-width: 150px;
         }
-
         .basemap-switcher-title {
             font-size: 11px;
             font-weight: 800;
             color: #1e3a5f;
             margin: 0 2px 6px;
         }
-
         .basemap-btn {
             display: block;
             width: 100%;
@@ -108,12 +104,10 @@ jobs:
             font-size: 11px;
             cursor: pointer;
         }
-
         .basemap-btn:hover {
             border-color: #2563eb;
             color: #2563eb;
         }
-
         .basemap-btn.active {
             background: #eff6ff;
             border-color: #2563eb;
