@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             ActivitySeeder::class,
             AidTypeSeeder::class,
             AidDistributionSeeder::class,
+            WestGazaDemoSeeder::class,
         ]);
     }
 }
