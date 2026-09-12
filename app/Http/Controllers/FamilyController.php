@@ -15,6 +15,7 @@ use App\Notifications\FamilyUpdatedNotification;
 use App\Services\NotificationCenter;
 use App\Support\NotificationSections;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FamilyController extends Controller
 {
@@ -182,16 +183,26 @@ class FamilyController extends Controller
         $camp = $family->camp;
         $campName = $camp?->name;
 
-        $family->familyMembers()->delete();
-        $family->delete();
+        DB::transaction(function () use ($family, $camp) {
+            $family->familyMembers()->get()->each(function (FamilyMember $member) {
+                $member->delete();
+            });
 
-        $camp?->updateOccupancy();
+            $family->delete();
+
+            $family->refresh();
+            if (!$family->trashed()) {
+                throw new \RuntimeException('تعذر نقل العائلة إلى سلة المحذوفات.');
+            }
+
+            $camp?->updateOccupancy();
+        });
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyDeletedNotification($familyName, $campName)
         );
 
-        return back()->with('success', 'تم حذف العائلة وجميع أفرادها بنجاح');
+        return back()->with('success', 'تم حذف العائلة وجميع أفرادها ونقلها إلى سلة المحذوفات');
     }
 
     public function trash(Request $request)
@@ -199,7 +210,9 @@ class FamilyController extends Controller
         $this->markNotificationsRead(NotificationSections::FAMILIES_TRASH);
 
         $user = auth()->user();
-        $query = Guardian::onlyTrashed()->with('camp')->withCount('familyMembers');
+        $query = Guardian::onlyTrashed()->with('camp')->withCount(['familyMembers' => function ($query) {
+            $query->withTrashed();
+        }]);
 
         if (!$user->isAdmin()) {
             $query->where('camp_id', $user->camp_id);
@@ -254,6 +267,35 @@ class FamilyController extends Controller
         );
 
         return back()->with('success', 'تم الحذف النهائي للعائلة وجميع أفرادها');
+    }
+
+    public function forceDeleteAll(): \Illuminate\Http\RedirectResponse
+    {
+        $user = auth()->user();
+
+        $query = Guardian::onlyTrashed();
+        if (!$user->isAdmin()) {
+            $query->where('camp_id', $user->camp_id);
+        }
+
+        $familyIds = $query->pluck('id');
+        $count = $familyIds->count();
+
+        if ($count === 0) {
+            return back()->with('success', 'سلة المحذوفات فارغة بالفعل');
+        }
+
+        DB::transaction(function () use ($familyIds) {
+            FamilyMember::onlyTrashed()
+                ->whereIn('guardian_id', $familyIds)
+                ->forceDelete();
+
+            Guardian::onlyTrashed()
+                ->whereIn('id', $familyIds)
+                ->forceDelete();
+        });
+
+        return back()->with('success', "تم الحذف النهائي لـ {$count} عائلة وجميع أفرادها بنجاح");
     }
 
     public function storeMember(Request $request, Guardian $guardian)
