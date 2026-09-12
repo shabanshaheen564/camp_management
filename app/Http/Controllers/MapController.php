@@ -147,20 +147,71 @@ class MapController extends Controller
     }
 
     function installHospitalPlacementGuard(mapInstance) {
-        if (hospitalPlacementGuardInstalled || !mapInstance || !mapInstance._events || !mapInstance._events.click) return;
-        const clickEvents = Array.isArray(mapInstance._events.click) ? mapInstance._events.click.slice() : [mapInstance._events.click];
-        const hospitalHandler = clickEvents.find(listener => { const fn = listener && listener.fn; if (typeof fn !== 'function') return false; const source = Function.prototype.toString.call(fn); return source.includes("getElementById('h-lat')") && source.includes("getElementById('h-lng')"); });
-        if (!hospitalHandler) return;
-        const originalHandler = hospitalHandler.fn; const context = hospitalHandler.ctx;
-        mapInstance.off('click', originalHandler, context);
-        mapInstance.on('click', function (event) {
-            if (!hospitalPlacementMode) return;
-            originalHandler.call(this, event); hospitalPlacementMode = false;
-            const button = document.querySelector('.camp-hospital-place-btn'); const hint = document.querySelector('#tab-hospitals .click-hint');
-            if (button) { button.classList.remove('active'); button.innerHTML = '<i class="fas fa-map-marker-alt me-1"></i>تحديد موقع المستشفى على الخريطة'; }
-            if (hint) hint.innerHTML = '<i class="fas fa-check-circle"></i><span>تم تحديد الموقع. أكمل بيانات المستشفى ثم اضغط حفظ.</span>';
-            if (mapInstance.getContainer()) mapInstance.getContainer().style.cursor = '';
+        if (hospitalPlacementGuardInstalled || !mapInstance) return;
+        const container = mapInstance.getContainer && mapInstance.getContainer();
+        if (!container) return;
+
+        const clickEvents = mapInstance._events && mapInstance._events.click
+            ? (Array.isArray(mapInstance._events.click) ? mapInstance._events.click.slice() : [mapInstance._events.click])
+            : [];
+        const hospitalHandler = clickEvents.find(listener => {
+            const fn = listener && listener.fn;
+            if (typeof fn !== 'function') return false;
+            const source = Function.prototype.toString.call(fn);
+            return source.includes("getElementById('h-lat')") && source.includes("getElementById('h-lng')");
         });
+
+        if (hospitalHandler) {
+            mapInstance.off('click', hospitalHandler.fn, hospitalHandler.ctx);
+        }
+
+        container.addEventListener('click', function (event) {
+            if (!hospitalPlacementMode) return;
+
+            const latlng = mapInstance.mouseEventToLatLng(event);
+            const lat = latlng.lat;
+            const lng = latlng.lng;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            const latInput = document.getElementById('h-lat');
+            const lngInput = document.getElementById('h-lng');
+            if (latInput) latInput.value = lat.toFixed(6);
+            if (lngInput) lngInput.value = lng.toFixed(6);
+
+            if (typeof tempMarker !== 'undefined' && tempMarker) {
+                mapInstance.removeLayer(tempMarker);
+            }
+
+            const previewIcon = typeof hospTmpIcon !== 'undefined'
+                ? hospTmpIcon
+                : L.divIcon({
+                    html: '<div style="background:#f97316;color:#fff;border-radius:50% 50% 50% 0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);transform:rotate(-45deg)"><i class="fas fa-map-pin" style="transform:rotate(45deg)"></i></div>',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -34],
+                    className: ''
+                });
+
+            tempMarker = L.marker([lat, lng], { icon: previewIcon }).addTo(mapInstance);
+            tempMarker.bindPopup('<div style="font-family:Cairo;font-size:12px;direction:rtl">📍 موقع المستشفى المحدد<br><small>أكمل البيانات واضغط حفظ</small></div>').openPopup();
+
+            hospitalPlacementMode = false;
+            const button = document.querySelector('.camp-hospital-place-btn');
+            const hint = document.querySelector('#tab-hospitals .click-hint');
+            if (button) {
+                button.classList.remove('active');
+                button.innerHTML = '<i class="fas fa-map-marker-alt me-1"></i>تحديد موقع المستشفى على الخريطة';
+            }
+            if (hint) {
+                hint.innerHTML = '<i class="fas fa-check-circle"></i><span>تم تحديد الموقع. أكمل بيانات المستشفى ثم اضغط حفظ.</span>';
+            }
+            if (container) container.style.cursor = '';
+
+            if (typeof switchTab === 'function') switchTab('hospitals');
+        }, true);
+
         hospitalPlacementGuardInstalled = true;
     }
 
