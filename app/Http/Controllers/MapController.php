@@ -146,7 +146,9 @@ class MapController extends Controller
 
             const shpBuffer = await zip.file(shpName).async('arraybuffer');
             const dbfBuffer = await zip.file(dbfName).async('arraybuffer');
-            const transform = proj4(PALESTINE_1923_GRID, WGS84);
+            const transform = {
+                inverse: (coords) => proj4(PALESTINE_1923_GRID, WGS84, coords)
+            };
             const geometries = shp.parseShp(shpBuffer, transform);
             const properties = shp.parseDbf(dbfBuffer);
             const geojson = shp.combine([geometries, properties]);
@@ -395,9 +397,9 @@ class MapController extends Controller
     });
 
     // The main map script defines processShapefile later in the page.
-    // Patch it after page scripts have loaded so only Palestine 1923 / Grid files
+    // Patch it after all page scripts have loaded so only Palestine 1923 / Grid files
     // use the explicit EPSG:28191 -> WGS84 transformation.
-    setTimeout(function () {
+    window.addEventListener('load', function () {
         if (typeof window.processShapefile !== 'function' || window.processShapefile._crsAwareInstalled) return;
 
         const originalProcessShapefile = window.processShapefile;
@@ -458,7 +460,7 @@ class MapController extends Controller
             }
         };
         window.processShapefile._crsAwareInstalled = true;
-    }, 0);
+    });
 })();
 </script>
 HTML;
