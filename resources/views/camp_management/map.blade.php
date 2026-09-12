@@ -1019,7 +1019,7 @@
                         if (pointInPolygon([lng, lat], feat.geometry)) {
                             if (gc === 1) insideBest = true; else insideGood = true;
                         }
-                        const coords = feat.geometry.coordinates[0];
+                        const coords = feat.geometry.type === 'MultiPolygon' ? feat.geometry.coordinates[0][0] : feat.geometry.coordinates[0];
                         const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
                         const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
                         const d = haversine(lat, lng, cy, cx);
@@ -1232,17 +1232,72 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
+        function pointInRing(point, ring) {
+            if (!Array.isArray(ring) || ring.length < 3) return false;
+            let inside = false;
+            const x = point[0], y = point[1];
+
+            for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                const xi = Number(ring[i]?.[0]);
+                const yi = Number(ring[i]?.[1]);
+                const xj = Number(ring[j]?.[0]);
+                const yj = Number(ring[j]?.[1]);
+
+                if (![xi, yi, xj, yj].every(Number.isFinite)) continue;
+
+                const intersects = ((yi > y) !== (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+                if (intersects) inside = !inside;
+            }
+
+            return inside;
+        }
+
+        function pointInPolygonGeometry(point, coordinates) {
+            if (!Array.isArray(coordinates) || !coordinates.length) return false;
+
+            // Polygon: [outerRing, holeRing1, holeRing2, ...]
+            const outerRing = coordinates[0];
+            if (!pointInRing(point, outerRing)) return false;
+
+            // A point inside a hole is outside the polygon.
+            for (let i = 1; i < coordinates.length; i++) {
+                if (pointInRing(point, coordinates[i])) return false;
+            }
+
+            return true;
+        }
+
+        function pointInGeometry(point, geometry) {
+            if (!geometry) return false;
+
+            // Accept a GeoJSON Feature as well as a geometry object.
+            if (geometry.type === 'Feature') return pointInGeometry(point, geometry.geometry);
+
+            if (geometry.type === 'Polygon') {
+                return pointInPolygonGeometry(point, geometry.coordinates);
+            }
+
+            if (geometry.type === 'MultiPolygon') {
+                return geometry.coordinates.some(polygon => pointInPolygonGeometry(point, polygon));
+            }
+
+            if (geometry.type === 'GeometryCollection') {
+                return (geometry.geometries || []).some(item => pointInGeometry(point, item));
+            }
+
+            return false;
+        }
+
+        // Kept under the existing function name so all existing analyses use the corrected logic.
         function pointInPolygon(point, geometry) {
             try {
-                const coords = geometry.type === 'MultiPolygon' ? geometry.coordinates[0][0] : geometry.coordinates[0];
-                let inside = false;
-                const x = point[0], y = point[1];
-                for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-                    const xi = coords[i][0], yi = coords[i][1], xj = coords[j][0], yj = coords[j][1];
-                    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
-                }
-                return inside;
-            } catch (e) { return false; }
+                return pointInGeometry(point, geometry);
+            } catch (e) {
+                console.warn('Point-in-geometry test failed:', e);
+                return false;
+            }
         }
         // ===== RELOCATION ANALYSIS =====
         let relocationLayers = [];
