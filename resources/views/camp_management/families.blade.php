@@ -43,7 +43,7 @@
                     <i class="fas fa-person" style="color:#3b82f6;"></i>
                 </div>
                 <div>
-                    <div class="stat-value" style="color:#3b82f6;">{{ $totalMembers }}</div>
+                    <div class="stat-value" style="color:#3b82f6;">{{ $totalFamilies + $totalMembers }}</div>
                     <div class="stat-label">إجمالي الأفراد</div>
                 </div>
             </div>
@@ -54,8 +54,8 @@
                     <i class="fas fa-baby" style="color:#f59e0b;"></i>
                 </div>
                 <div>
-                    <div class="stat-value" style="color:#f59e0b;">{{ $totalFamilies + $totalMembers }}</div>
-                    <div class="stat-label">إجمالي النازحين</div>
+                    <div class="stat-value" style="color:#f59e0b;">{{ $totalMembers }}</div>
+                    <div class="stat-label">أفراد الأسرة المسجلون</div>
                 </div>
             </div>
         </div>
