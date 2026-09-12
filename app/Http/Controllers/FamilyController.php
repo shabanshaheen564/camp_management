@@ -182,21 +182,32 @@ class FamilyController extends Controller
         $familyName = $family->full_name;
         $camp = $family->camp;
         $campName = $camp?->name;
+        $timestamp = now();
 
-        DB::transaction(function () use ($family, $camp) {
-            $family->familyMembers()->get()->each(function (FamilyMember $member) {
-                $member->delete();
-            });
+        // This legacy action is kept fully safe because Render may still have
+        // a cached route pointing to FamilyController@destroy.
+        DB::table('guardians')
+            ->where('id', $family->id)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => $timestamp]);
 
-            $family->delete();
+        DB::table('family_members')
+            ->where('guardian_id', $family->id)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => $timestamp]);
 
-            $family->refresh();
-            if (!$family->trashed()) {
-                throw new \RuntimeException('تعذر نقل العائلة إلى سلة المحذوفات.');
-            }
+        $isTrashed = DB::table('guardians')
+            ->where('id', $family->id)
+            ->whereNotNull('deleted_at')
+            ->exists();
 
-            $camp?->updateOccupancy();
-        });
+        if (!$isTrashed) {
+            return back()->withErrors([
+                'family' => 'تعذر نقل العائلة إلى سلة المحذوفات.',
+            ]);
+        }
+
+        $camp?->updateOccupancy();
 
         app(NotificationCenter::class)->notifyAdmins(
             new FamilyDeletedNotification($familyName, $campName)
