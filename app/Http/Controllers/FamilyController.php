@@ -259,7 +259,7 @@ class FamilyController extends Controller
         $familyName = $family->full_name;
         $campName = $family->camp?->name;
 
-        $family->familyMembers()->onlyTrashed()->forceDelete();
+        $family->familyMembers()->withTrashed()->forceDelete();
         $family->forceDelete();
 
         app(NotificationCenter::class)->notifyAdmins(
@@ -286,10 +286,14 @@ class FamilyController extends Controller
         }
 
         DB::transaction(function () use ($familyIds) {
-            FamilyMember::onlyTrashed()
+            // Remove every member belonging to trashed families, regardless
+            // of whether an earlier delete attempt left the member active.
+            FamilyMember::withTrashed()
                 ->whereIn('guardian_id', $familyIds)
                 ->forceDelete();
 
+            // Now the foreign-key relationship is clear, so the trashed
+            // guardians can be permanently deleted safely.
             Guardian::onlyTrashed()
                 ->whereIn('id', $familyIds)
                 ->forceDelete();
