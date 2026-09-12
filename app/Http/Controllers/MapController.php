@@ -28,6 +28,8 @@ class MapController extends Controller
         // the existing map initialization script. This keeps web.php untouched.
         $leafletScript = '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>';
         $basemapScript = <<<'HTML'
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.19.10/dist/proj4.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
     .camp-basemap-switcher {
         background: rgba(255, 255, 255, .97);
@@ -104,6 +106,63 @@ class MapController extends Controller
 (function () {
     if (typeof L === 'undefined' || !L.Map || !L.TileLayer) return;
 
+    const PALESTINE_1923_GRID = '+proj=cass +lat_0=31.7340969444444 +lon_0=35.2120805555556 +x_0=170251.555 +y_0=126867.909 +a=6378300.789 +b=6356566.435 +towgs84=-275.7224,94.7824,340.8944,-8.001,-4.42,-11.821,1 +units=m +no_defs +type=crs';
+    const WGS84 = '+proj=longlat +datum=WGS84 +no_defs';
+    if (typeof proj4 === 'function') proj4.defs('EPSG:28191', PALESTINE_1923_GRID);
+
+    async function parsePalestine1923Zip(file) {
+        if (!file || !/\.zip$/i.test(file.name || '') || typeof JSZip === 'undefined' || typeof shp !== 'function' || typeof proj4 !== 'function') {
+            return null;
+        }
+
+        const buffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(buffer);
+        const entries = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+        const shpFiles = entries.filter(name => /\.shp$/i.test(name));
+        if (!shpFiles.length) return null;
+
+        const groups = [];
+        let foundPalestineGrid = false;
+
+        for (const shpName of shpFiles) {
+            const base = shpName.replace(/\.shp$/i, '');
+            const dbfName = entries.find(name => name.replace(/\.dbf$/i, '') === base && /\.dbf$/i.test(name));
+            const prjName = entries.find(name => name.replace(/\.prj$/i, '') === base && /\.prj$/i.test(name));
+            if (!dbfName || !prjName) continue;
+
+            const prjText = await zip.file(prjName).async('text');
+            const normalizedPrj = String(prjText || '').toLowerCase().replace(/\s+/g, ' ');
+            const isPalestineGrid =
+                (normalizedPrj.includes('palestine') || normalizedPrj.includes('gcs_palestine_1923')) &&
+                (
+                    normalizedPrj.includes('28191') ||
+                    normalizedPrj.includes('palestine_1923_palestine_grid') ||
+                    normalizedPrj.includes('palestine 1923 / palestine grid') ||
+                    normalizedPrj.includes('cassini')
+                );
+
+            if (!isPalestineGrid) continue;
+            foundPalestineGrid = true;
+
+            const shpBuffer = await zip.file(shpName).async('arraybuffer');
+            const dbfBuffer = await zip.file(dbfName).async('arraybuffer');
+            const transform = proj4(PALESTINE_1923_GRID, WGS84);
+            const geometries = shp.parseShp(shpBuffer, transform);
+            const properties = shp.parseDbf(dbfBuffer);
+            const geojson = shp.combine([geometries, properties]);
+            geojson.fileName = base.split('/').pop();
+            groups.push(geojson);
+        }
+
+        return foundPalestineGrid ? (groups.length === 1 ? groups[0] : groups) : null;
+    }
+
+    async function loadShapefileWithCrsCorrection(file) {
+        const corrected = await parsePalestine1923Zip(file);
+        if (corrected) return corrected;
+        return shp(await file.arrayBuffer());
+    }
+
     let hospitalPlacementMode = false;
     let hospitalPlacementGuardInstalled = false;
 
@@ -157,7 +216,7 @@ class MapController extends Controller
                 }
 
                 status.textContent = 'جاري قراءة Shapefile...';
-                const geojson = await shp(await file.arrayBuffer());
+                const geojson = await loadShapefileWithCrsCorrection(file);
                 const features = Array.isArray(geojson) ? geojson.flatMap(item => item.features || []) : (geojson.features || []);
                 const points = features.filter(feature =>
                     feature && feature.geometry && feature.geometry.type === 'Point' &&
@@ -334,6 +393,72 @@ class MapController extends Controller
 
         control.addTo(mapInstance);
     });
+
+    // The main map script defines processShapefile later in the page.
+    // Patch it after page scripts have loaded so only Palestine 1923 / Grid files
+    // use the explicit EPSG:28191 -> WGS84 transformation.
+    setTimeout(function () {
+        if (typeof window.processShapefile !== 'function' || window.processShapefile._crsAwareInstalled) return;
+
+        const originalProcessShapefile = window.processShapefile;
+        window.processShapefile = async function (file) {
+            const explicitGeoJson = await parsePalestine1923Zip(file);
+            if (!explicitGeoJson) {
+                return originalProcessShapefile.call(this, file);
+            }
+
+            const icon = document.getElementById('upload-icon');
+            const text = document.getElementById('upload-text');
+            if (icon) icon.className = 'fas fa-spinner fa-spin';
+            if (text) text.textContent = 'جاري المعالجة بنظام Palestine 1923 / Palestine Grid...';
+
+            try {
+                const features = Array.isArray(explicitGeoJson)
+                    ? explicitGeoJson.flatMap(entry => entry?.features || [])
+                    : (explicitGeoJson?.features || []);
+
+                if (!features.length) {
+                    throw new Error('لم يتم العثور على معالم داخل Shapefile');
+                }
+
+                const fileEntry = {
+                    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    name: file.name,
+                    features
+                };
+
+                uploadedShapefiles.push(fileEntry);
+                geojsonData.push(explicitGeoJson);
+                refreshShapefileSelectors();
+
+                if (!selectedStudyAreaFileId && uploadedShapefiles.length === 1) {
+                    selectedStudyAreaFileId = fileEntry.id;
+                    renderStudyAreaLayer(fileEntry);
+                }
+
+                if (icon) {
+                    icon.className = 'fas fa-check-circle';
+                    icon.style.color = '#10b981';
+                }
+                const count = getAllFeatures().length;
+                if (text) text.textContent = `✓ تم تحميل ${count} منطقة (EPSG:28191 → WGS84)`;
+                const polygonCount = document.getElementById('cnt-polygons');
+                if (polygonCount) polygonCount.textContent = count;
+                const controls = document.getElementById('layer-controls');
+                if (controls) controls.style.display = 'block';
+                const gisButton = document.getElementById('btn-gis');
+                if (gisButton) gisButton.style.display = 'flex';
+            } catch (error) {
+                if (icon) {
+                    icon.className = 'fas fa-exclamation-triangle';
+                    icon.style.color = '#ef4444';
+                }
+                if (text) text.textContent = 'خطأ في تحويل ملف Palestine 1923';
+                console.error(error);
+            }
+        };
+        window.processShapefile._crsAwareInstalled = true;
+    }, 0);
 })();
 </script>
 HTML;
