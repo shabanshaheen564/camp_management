@@ -11,9 +11,21 @@
             <h4 style="font-weight:800; margin:0; color:#1e293b;">العائلات المحذوفة</h4>
             <p style="color:#64748b; font-size:0.85rem; margin:0;">إجمالي: {{ $trashedFamilies->total() }} عائلة محذوفة</p>
         </div>
-        <a href="{{ route('families.index') }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-right me-2"></i> رجوع للعائلات
-        </a>
+        <div class="d-flex gap-2">
+            @if($trashedFamilies->total() > 0)
+                <form method="POST" action="{{ route('families.force-delete-all') }}" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('تحذير: سيتم حذف جميع العائلات الموجودة في سلة المحذوفات وجميع أفرادها نهائيًا. لا يمكن التراجع عن هذه العملية. هل أنت متأكد؟')">
+                        <i class="fas fa-trash-alt me-2"></i> حذف الكل نهائيًا
+                    </button>
+                </form>
+            @endif
+            <a href="{{ route('families.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-right me-2"></i> رجوع للعائلات
+            </a>
+        </div>
     </div>
 
     <form method="GET" action="{{ route('families.trash') }}" class="mb-4">
@@ -25,6 +37,12 @@
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
+    @if($errors->any())
+        <div class="alert alert-danger">
+            {{ $errors->first() }}
+        </div>
     @endif
 
     <div class="card">
