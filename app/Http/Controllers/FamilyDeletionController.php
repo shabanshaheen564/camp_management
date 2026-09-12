@@ -43,6 +43,7 @@ class FamilyDeletionController extends Controller
 
         $camp?->updateOccupancy();
 
+        // Keep the deployment path active on Render Free; deletion remains fully isolated from Eloquent transactions.
         app(\App\Services\NotificationCenter::class)->notifyAdmins(
             new FamilyDeletedNotification($familyName, $campName)
         );
