@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:report.view')->name('reports.index');
     Route::get('/reports/print', [ReportController::class, 'printStatistics'])->middleware('permission:report.export')->name('reports.print');
+    Route::get('/reports/print-aids', [ReportController::class, 'printAids'])->middleware('permission:report.export')->name('reports.print-aids');
     Route::get('/reports/export/camps', [ReportController::class, 'exportCamps'])->middleware('permission:report.export')->name('reports.export.camps');
     Route::get('/reports/export/families', [ReportController::class, 'exportFamilies'])->middleware('permission:report.export')->name('reports.export.families');
     Route::get('/reports/export/members', [ReportController::class, 'exportMembers'])->middleware('permission:report.export')->name('reports.export.members');
@@ -89,6 +90,6 @@ Route::middleware('auth')->group(function () {
     Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.update')->name('roles.update');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.delete')->name('roles.destroy');
     Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->middleware('permission:role.update')->name('roles.toggle');
-    Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->middleware('permission:role.view')->name('roles.permissions');
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions'])->middleware('permission:role.view')->name('roles.permissions');
     Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.update')->name('roles.permissions.update');
 });
