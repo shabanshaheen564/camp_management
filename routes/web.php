@@ -144,6 +144,6 @@ Route::middleware('auth')->group(function () {
     Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.update')->name('roles.update');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.delete')->name('roles.destroy');
     Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->middleware('permission:role.update')->name('roles.toggle');
-    Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions'])->middleware('permission:role.view')->name('roles.permissions');
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->middleware('permission:role.view')->name('roles.permissions');
     Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.update')->name('roles.permissions.update');
 });
