@@ -16,8 +16,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Patch map controller
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           path = Path('app/Http/Controllers/MapController.php')
@@ -45,8 +45,6 @@ jobs:
           if marker not in text:
               raise SystemExit('Expected basemap init hook was not found')
 
-          insert_after = '''        L.Map.addInitHook(function () {\n            const mapInstance = this; let osmLayer = null; let satelliteLayer = null;\n            const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 19 });'''
-          # Insert the aid heatmap hook immediately before the basemap hook, leaving all existing map logic intact.
           heat_hook = r'''        L.Map.addInitHook(function () {
             const mapInstance = this;
             const requestData = Array.isArray(window.CAMP_AID_REQUESTS) ? window.CAMP_AID_REQUESTS : [];
@@ -55,12 +53,7 @@ jobs:
                 const camp = campsById.get(Number(item.camp_id));
                 const count = Number(item.request_count || 0);
                 if (!camp || !Number.isFinite(Number(camp.latitude)) || !Number.isFinite(Number(camp.longitude)) || count <= 0) return null;
-                return {
-                    camp,
-                    count,
-                    lat: Number(camp.latitude),
-                    lng: Number(camp.longitude),
-                };
+                return { camp, count, lat: Number(camp.latitude), lng: Number(camp.longitude) };
             }).filter(Boolean);
 
             let heatLayer = null;
@@ -68,47 +61,18 @@ jobs:
             let enabled = true;
 
             const renderAidHeatmap = function () {
-                if (heatLayer) {
-                    mapInstance.removeLayer(heatLayer);
-                    heatLayer = null;
-                }
-                if (popupLayer) {
-                    mapInstance.removeLayer(popupLayer);
-                    popupLayer = null;
-                }
+                if (heatLayer) { mapInstance.removeLayer(heatLayer); heatLayer = null; }
+                if (popupLayer) { mapInstance.removeLayer(popupLayer); popupLayer = null; }
                 if (!enabled || !validRequests.length || typeof L.heatLayer !== 'function') return;
 
                 const maxCount = Math.max(...validRequests.map(item => item.count), 1);
-                const points = validRequests.map(item => [
-                    item.lat,
-                    item.lng,
-                    0.35 + (0.65 * item.count / maxCount),
-                ]);
-
-                heatLayer = L.heatLayer(points, {
-                    radius: 48,
-                    blur: 30,
-                    maxZoom: 17,
-                    minOpacity: 0.30,
-                    max: 1.0,
-                }).addTo(mapInstance);
+                const points = validRequests.map(item => [item.lat, item.lng, 0.35 + (0.65 * item.count / maxCount)]);
+                heatLayer = L.heatLayer(points, { radius: 48, blur: 30, maxZoom: 17, minOpacity: 0.30, max: 1.0 }).addTo(mapInstance);
 
                 popupLayer = L.layerGroup();
                 validRequests.forEach(function (item) {
-                    const marker = L.circleMarker([item.lat, item.lng], {
-                        radius: 12,
-                        stroke: false,
-                        fill: false,
-                        opacity: 0,
-                        fillOpacity: 0,
-                        interactive: true,
-                    });
-                    marker.bindPopup(
-                        '<div style="font-family:Cairo,sans-serif;direction:rtl;text-align:right;min-width:170px">' +
-                        '<div style="font-weight:800;color:#1e3a5f;margin-bottom:5px">' + String(item.camp.name || 'المخيم') + '</div>' +
-                        '<div>طلبات المساعدات: <strong style="color:#dc2626">' + item.count.toLocaleString('ar') + '</strong></div>' +
-                        '</div>'
-                    );
+                    const marker = L.circleMarker([item.lat, item.lng], { radius: 12, stroke: false, fill: false, opacity: 0, fillOpacity: 0, interactive: true });
+                    marker.bindPopup('<div style="font-family:Cairo,sans-serif;direction:rtl;text-align:right;min-width:170px"><div style="font-weight:800;color:#1e3a5f;margin-bottom:5px">' + String(item.camp.name || 'المخيم') + '</div><div>طلبات المساعدات: <strong style="color:#dc2626">' + item.count.toLocaleString('ar') + '</strong></div></div>');
                     marker.addTo(popupLayer);
                 });
                 popupLayer.addTo(mapInstance);
@@ -130,7 +94,6 @@ jobs:
                 return container;
             };
             control.addTo(mapInstance);
-
             renderAidHeatmap();
         });
 
@@ -144,9 +107,9 @@ jobs:
           text = text.replace(style_marker, style + style_marker, 1)
 
           path.write_text(text, encoding='utf-8')
+          PY
 
       - name: Remove temporary workflow and commit
-        shell: bash
         run: |
           rm -f .github/workflows/apply-aid-heatmap.yml
           git config user.name "github-actions[bot]"
