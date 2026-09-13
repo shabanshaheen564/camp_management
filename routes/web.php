@@ -91,6 +91,34 @@ Route::middleware('auth')->group(function () {
         })->values());
     })->middleware('permission:map.view')->name('map.aid-requests-data');
 
+    // تفاصيل طلبات/توزيعات المساعدات عند الضغط على المخيم.
+    Route::get('/map/camp-aid-requests/{camp}', function (Camp $camp) {
+        $distributions = AidDistribution::with('aidType:id,name')
+            ->where('camp_id', $camp->id)
+            ->whereNull('deleted_at')
+            ->get(['id', 'aid_type_id']);
+
+        $byType = $distributions
+            ->groupBy('aid_type_id')
+            ->map(function ($items) {
+                $aidType = $items->first()->aidType;
+
+                return [
+                    'aid_type_id' => $aidType?->id,
+                    'aid_type_name' => $aidType?->name ?? 'غير محدد',
+                    'request_count' => $items->count(),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'camp_id' => $camp->id,
+            'camp_name' => $camp->name,
+            'total_requests' => $distributions->count(),
+            'aid_types' => $byType,
+        ]);
+    })->middleware('permission:map.view')->name('map.camp-aid-requests');
+
     Route::prefix('map')->name('map.')->middleware('permission:map.manage')->group(function () {
         Route::get('/hospitals-data', [MapController::class, 'hospitalsData'])->name('hospitals.data');
         Route::post('/hospitals', [MapController::class, 'storeHospital'])->name('hospitals.store');
@@ -116,6 +144,6 @@ Route::middleware('auth')->group(function () {
     Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.update')->name('roles.update');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.delete')->name('roles.destroy');
     Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->middleware('permission:role.update')->name('roles.toggle');
-    Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->middleware('permission:role.view')->name('roles.permissions');
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions'])->middleware('permission:role.view')->name('roles.permissions');
     Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.update')->name('roles.permissions.update');
 });
