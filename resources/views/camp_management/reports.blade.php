@@ -116,6 +116,23 @@
 
     @permission('report.export')
     <div class="col-xl-3 col-md-6">
+        <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #8b5cf6">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-table" style="font-size: 2.5rem; color: #8b5cf6;"></i>
+                </div>
+                <h5 class="card-title mb-3">طباعة جدول المساعدات</h5>
+                <p class="text-muted small mb-3">طباعة جميع توزيعات المساعدات</p>
+                <a href="{{ route('reports.print-aids') }}" target="_blank" class="btn btn-dark btn-sm w-100">
+                    <i class="fas fa-file-alt me-2"></i>عرض جدول المساعدات
+                </a>
+            </div>
+        </div>
+    </div>
+    @endpermission
+
+    @permission('report.export')
+    <div class="col-xl-3 col-md-6">
         <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #3b82f6">
             <div class="card-body text-center">
                 <div class="mb-3">
@@ -186,7 +203,6 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// تحديث رابط تصدير العائلات عند تغيير المخيم
 document.getElementById('familiesCampFilter')?.addEventListener('change', function() {
     const campId = this.value;
     const url = new URL("{{ route('reports.export.families') }}", window.location.origin);
@@ -196,7 +212,6 @@ document.getElementById('familiesCampFilter')?.addEventListener('change', functi
     document.getElementById('exportFamiliesBtn').href = url.toString();
 });
 
-// تحديث رابط تصدير الأفراد عند تغيير المخيم
 document.getElementById('membersCampFilter')?.addEventListener('change', function() {
     const campId = this.value;
     const url = new URL("{{ route('reports.export.members') }}", window.location.origin);
@@ -209,7 +224,6 @@ document.getElementById('membersCampFilter')?.addEventListener('change', functio
 Chart.defaults.font.family = "'Cairo', sans-serif";
 Chart.defaults.color = '#64748b';
 
-// مخطط توزيع النازحين (دائري)
 const campsData = @json($campsData);
 new Chart(document.getElementById('campsChart'), {
     type: 'pie',
@@ -233,7 +247,6 @@ new Chart(document.getElementById('campsChart'), {
     }
 });
 
-// مخطط المساعدات الشهرية (أعمدة)
 const monthlyAids = @json($monthlyAids);
 new Chart(document.getElementById('aidsChart'), {
     type: 'bar',
@@ -258,7 +271,6 @@ new Chart(document.getElementById('aidsChart'), {
     }
 });
 
-// مخطط نمو الأعداد (خطي)
 const growthData = @json($monthlyGrowth);
 new Chart(document.getElementById('growthChart'), {
     type: 'line',
@@ -285,7 +297,6 @@ new Chart(document.getElementById('growthChart'), {
     }
 });
 
-// مخطط الفئات العمرية (دونات)
 const ageData = @json($ageGroups);
 new Chart(document.getElementById('ageChart'), {
     type: 'doughnut',
