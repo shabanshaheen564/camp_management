@@ -95,10 +95,10 @@
     </div>
 </div>
 
-{{-- بطاقات التصدير والطباعة --}}
+{{-- بطاقات التصدير والطباعة: 3 في الصف الأول و2 في الصف الثاني --}}
 <div class="row g-3 mb-4">
     @permission('report.export')
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xl-4 col-md-6">
         <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #8b5cf6">
             <div class="card-body text-center">
                 <div class="mb-3">
@@ -115,7 +115,7 @@
     @endpermission
 
     @permission('report.export')
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xl-4 col-md-6">
         <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #8b5cf6">
             <div class="card-body text-center">
                 <div class="mb-3">
@@ -132,7 +132,7 @@
     @endpermission
 
     @permission('report.export')
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xl-4 col-md-6">
         <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #3b82f6">
             <div class="card-body text-center">
                 <div class="mb-3">
@@ -149,7 +149,7 @@
     @endpermission
 
     @permission('report.export')
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xl-6 col-md-6">
         <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #10b981">
             <div class="card-body">
                 <div class="text-center mb-3">
@@ -174,7 +174,7 @@
     @endpermission
 
     @permission('report.export')
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xl-6 col-md-6">
         <div class="card export-card h-100 shadow-sm" style="border-top:4px solid #f59e0b">
             <div class="card-body">
                 <div class="text-center mb-3">
