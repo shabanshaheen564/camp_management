@@ -162,6 +162,23 @@ class ReportController extends Controller
         ));
     }
 
+    public function printAids()
+    {
+        $user = auth()->user();
+
+        $query = AidDistribution::with(['camp', 'aidType'])
+            ->orderByDesc('distribution_date')
+            ->orderByDesc('id');
+
+        if (!$user->isAdmin()) {
+            $query->where('camp_id', $user->camp_id);
+        }
+
+        $aids = $query->get();
+
+        return view('camp_management.aids_print', compact('aids'));
+    }
+
     public function exportCamps()
     {
         $user = auth()->user();
