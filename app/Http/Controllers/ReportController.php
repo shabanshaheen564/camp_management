@@ -162,21 +162,42 @@ class ReportController extends Controller
         ));
     }
 
-    public function printAids()
+    public function printAids(Request $request)
     {
         $user = auth()->user();
+        $selectedCampIds = $request->input('camp_ids', []);
+        $selectedCampIds = is_array($selectedCampIds) ? array_values(array_filter($selectedCampIds)) : [];
+        $month = $request->input('month');
 
         $query = AidDistribution::with(['camp', 'aidType'])
             ->orderByDesc('distribution_date')
             ->orderByDesc('id');
 
-        if (!$user->isAdmin()) {
+        if ($user->isAdmin()) {
+            if ($selectedCampIds) {
+                $query->whereIn('camp_id', $selectedCampIds);
+            }
+        } else {
             $query->where('camp_id', $user->camp_id);
+            $selectedCampIds = $user->camp_id ? [$user->camp_id] : [];
+        }
+
+        if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+            [$year, $monthNumber] = array_map('intval', explode('-', $month));
+            $query->whereYear('distribution_date', $year)
+                ->whereMonth('distribution_date', $monthNumber);
         }
 
         $aids = $query->get();
+        $camps = $user->isAdmin()
+            ? Camp::active()->orderBy('name')->get()
+            : Camp::active()->where('id', $user->camp_id)->orderBy('name')->get();
 
-        return view('camp_management.aids_print', compact('aids'));
+        $selectedCamps = $camps->whereIn('id', $selectedCampIds);
+
+        return view('camp_management.aids_print', compact(
+            'aids', 'camps', 'selectedCampIds', 'selectedCamps', 'month'
+        ));
     }
 
     public function exportCamps()
