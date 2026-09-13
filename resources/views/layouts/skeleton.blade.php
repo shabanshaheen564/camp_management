@@ -376,5 +376,16 @@
     </form>
 
     @stack('scripts')
+
+    @if(request()->routeIs('map.index'))
+        <script src="{{ asset('js/aid-heatmap.js') }}"></script>
+        <style>
+            .camp-aid-heat-control { background: transparent; margin-top: 6px; }
+            .camp-aid-heat-btn { border: 1px solid #fca5a5; border-radius: 9px; background: rgba(255,255,255,.97); color: #991b1b; padding: 8px 11px; font-family: 'Cairo', sans-serif; font-size: 11px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.18); direction: rtl; min-width: 178px; }
+            .camp-aid-heat-btn:hover { background: #fff7ed; border-color: #f97316; }
+            .camp-aid-heat-btn.active { background: #fff1f2; border-color: #ef4444; color: #b91c1c; }
+            .camp-aid-heat-dot { margin-left: 5px; }
+        </style>
+    @endif
 </body>
 </html>
