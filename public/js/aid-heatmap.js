@@ -3,6 +3,14 @@
 
     if (!document.getElementById('map')) return;
 
+    function getGlobalValue(name, fallback) {
+        try {
+            return window.eval("typeof " + name + " !== 'undefined' ? " + name + " : null") || fallback;
+        } catch (error) {
+            return fallback;
+        }
+    }
+
     function getMapInstance() {
         try {
             return window.eval("typeof map !== 'undefined' ? map : null");
@@ -42,9 +50,104 @@
         document.head.appendChild(script);
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function setupCampAidPopups() {
+        const camps = getGlobalValue('CAMPS_DATA', []);
+        const markers = getGlobalValue('campMarkers', []);
+        if (!Array.isArray(camps) || !Array.isArray(markers) || !markers.length) return;
+
+        camps.forEach(function (camp) {
+            const lat = Number(camp.latitude);
+            const lng = Number(camp.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+            const marker = markers.find(function (item) {
+                const position = item.getLatLng();
+                return Math.abs(position.lat - lat) < 0.000001 && Math.abs(position.lng - lng) < 0.000001;
+            });
+            if (!marker || marker.__campAidPopupReady) return;
+
+            marker.__campAidPopupReady = true;
+            marker.__campAidBasePopup = marker.getPopup() ? marker.getPopup().getContent() : '';
+            marker.__campAidLoaded = false;
+            marker.__campAidLoading = false;
+
+            marker.on('click', function () {
+                if (marker.__campAidLoading || marker.__campAidLoaded) return;
+
+                marker.__campAidLoading = true;
+                marker.setPopupContent(marker.__campAidBasePopup +
+                    '<div data-camp-aid-section style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;font-family:Cairo,sans-serif;direction:rtl;text-align:right;min-width:200px">' +
+                    '<div style="font-weight:800;color:#1e3a5f;margin-bottom:5px"><i class="fas fa-hand-holding-heart" style="color:#dc2626"></i> طلبات المساعدات</div>' +
+                    '<div style="font-size:11px;color:#64748b">جاري تحميل البيانات...</div>' +
+                    '</div>'
+                );
+
+                fetch('/map/camp-aid-requests/' + encodeURIComponent(camp.id), {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                })
+                    .then(function (response) {
+                        if (!response.ok) throw new Error('تعذر تحميل طلبات المساعدات');
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        const types = Array.isArray(data.aid_types) ? data.aid_types : [];
+                        let details = '';
+
+                        if (!types.length || Number(data.total_requests) === 0) {
+                            details = '<div style="font-size:11px;color:#64748b">لا توجد طلبات مساعدات مسجلة لهذا المخيم.</div>';
+                        } else {
+                            details = '<div style="font-size:12px;color:#475569;margin-bottom:6px">الإجمالي: <strong style="color:#dc2626">' +
+                                Number(data.total_requests).toLocaleString('ar') + '</strong> طلب</div>' +
+                                '<div style="display:flex;flex-direction:column;gap:4px">' +
+                                types.map(function (type) {
+                                    return '<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border-radius:6px;padding:5px 7px;font-size:11px">' +
+                                        '<span><i class="fas fa-box-open" style="color:#2563eb;width:15px"></i> ' + escapeHtml(type.aid_type_name || 'غير محدد') + '</span>' +
+                                        '<strong style="color:#1e3a5f">' + Number(type.request_count || 0).toLocaleString('ar') + '</strong>' +
+                                        '</div>';
+                                }).join('') +
+                                '</div>';
+                        }
+
+                        marker.__campAidLoaded = true;
+                        marker.__campAidLoading = false;
+                        marker.setPopupContent(marker.__campAidBasePopup +
+                            '<div data-camp-aid-section style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;font-family:Cairo,sans-serif;direction:rtl;text-align:right;min-width:200px">' +
+                            '<div style="font-weight:800;color:#1e3a5f;margin-bottom:6px"><i class="fas fa-hand-holding-heart" style="color:#dc2626"></i> طلبات المساعدات</div>' +
+                            details +
+                            '</div>'
+                        );
+                        marker.openPopup();
+                    })
+                    .catch(function (error) {
+                        marker.__campAidLoading = false;
+                        marker.setPopupContent(marker.__campAidBasePopup +
+                            '<div data-camp-aid-section style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;font-family:Cairo,sans-serif;direction:rtl;text-align:right;min-width:200px">' +
+                            '<div style="font-weight:800;color:#1e3a5f;margin-bottom:5px"><i class="fas fa-hand-holding-heart" style="color:#dc2626"></i> طلبات المساعدات</div>' +
+                            '<div style="font-size:11px;color:#dc2626">تعذر تحميل بيانات طلبات المساعدات.</div>' +
+                            '</div>'
+                        );
+                        console.warn('Camp aid requests:', error.message || error);
+                    });
+            });
+        });
+    }
+
     function init(mapInstance) {
         if (mapInstance.__aidRequestHeatmapReady) return;
         mapInstance.__aidRequestHeatmapReady = true;
+
+        setupCampAidPopups();
 
         loadHeatPlugin(function () {
             fetch('/map/aid-requests-data', {
