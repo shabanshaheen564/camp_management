@@ -16,14 +16,12 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Middleware\AuthorizeImportCampRows;
 
 Route::get('/', fn() => view('welcome'))->name('home');
-
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
     Route::get('/camps', [CampController::class, 'index'])->middleware('permission:camp.view')->name('camps.index');
     Route::post('/camps', [CampController::class, 'store'])->middleware('permission:camp.create')->name('camps.store');
     Route::match(['put', 'patch'], '/camps/{camp}', [CampController::class, 'update'])->middleware('permission:camp.update')->name('camps.update');
@@ -90,6 +88,6 @@ Route::middleware('auth')->group(function () {
     Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.update')->name('roles.update');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.delete')->name('roles.destroy');
     Route::patch('/roles/{role}/toggle', [RoleController::class, 'toggleStatus'])->middleware('permission:role.update')->name('roles.toggle');
-    Route::get('/roles/{role}/permissions', [RoleController::class, 'getPermissions'])->middleware('permission:role.view')->name('roles.permissions');
+    Route::get('/roles/{role}/permissions', [RoleController::class, 'getRolePermissions'])->middleware('permission:role.view')->name('roles.permissions');
     Route::patch('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.update')->name('roles.permissions.update');
 });
