@@ -15,7 +15,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Middleware\AuthorizeImportCampRows;
 use App\Models\Camp;
-use App\Models\FamilyAidAllocation;
+use App\Models\AidDistribution;
 
 Route::get('/', fn() => view('welcome'))->name('home');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -65,35 +65,32 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/map', [MapController::class, 'index'])->middleware('permission:map.view')->name('map.index');
     Route::get('/map/data', [MapController::class, 'data'])->middleware('permission:map.view')->name('map.data');
+
+    // بيانات كثافة طلبات/توزيعات المساعدات حسب المخيم.
+    // كل سجل ظاهر في صفحة "توزيع المساعدات" يُحسب كطلب/حالة مساعدة للمخيم.
     Route::get('/map/aid-requests-data', function () {
-        $requests = FamilyAidAllocation::query()
-            ->selectRaw('guardians.camp_id as camp_id, COUNT(*) as request_count')
-            ->join('guardians', 'family_aid_allocations.guardian_id', '=', 'guardians.id')
-            ->join('camps', 'guardians.camp_id', '=', 'camps.id')
-            ->where('family_aid_allocations.receipt_status', FamilyAidAllocation::STATUS_PENDING)
-            ->whereNull('family_aid_allocations.deleted_at')
+        $requests = AidDistribution::query()
+            ->join('camps', 'aid_distributions.camp_id', '=', 'camps.id')
+            ->whereNull('aid_distributions.deleted_at')
             ->where('camps.is_active', true)
             ->whereNotNull('camps.latitude')
             ->whereNotNull('camps.longitude')
-            ->groupBy('guardians.camp_id')
+            ->selectRaw('aid_distributions.camp_id as camp_id, camps.name as camp_name, camps.latitude, camps.longitude, COUNT(aid_distributions.id) as request_count')
+            ->groupBy('aid_distributions.camp_id', 'camps.name', 'camps.latitude', 'camps.longitude')
+            ->orderByDesc('request_count')
             ->get();
 
-        $camps = Camp::active()
-            ->whereIn('id', $requests->pluck('camp_id'))
-            ->get(['id', 'name', 'latitude', 'longitude'])
-            ->keyBy('id');
-
-        return response()->json($requests->map(function ($item) use ($camps) {
-            $camp = $camps->get($item->camp_id);
+        return response()->json($requests->map(function ($item) {
             return [
                 'camp_id' => (int) $item->camp_id,
-                'camp_name' => $camp?->name,
-                'latitude' => $camp ? (float) $camp->latitude : null,
-                'longitude' => $camp ? (float) $camp->longitude : null,
+                'camp_name' => $item->camp_name,
+                'latitude' => (float) $item->latitude,
+                'longitude' => (float) $item->longitude,
                 'request_count' => (int) $item->request_count,
             ];
         })->values());
     })->middleware('permission:map.view')->name('map.aid-requests-data');
+
     Route::prefix('map')->name('map.')->middleware('permission:map.manage')->group(function () {
         Route::get('/hospitals-data', [MapController::class, 'hospitalsData'])->name('hospitals.data');
         Route::post('/hospitals', [MapController::class, 'storeHospital'])->name('hospitals.store');
