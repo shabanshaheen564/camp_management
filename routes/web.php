@@ -36,7 +36,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/families', [FamilyController::class, 'index'])->middleware('permission:guardian.view')->name('families.index');
     Route::post('/families', [FamilyController::class, 'store'])->middleware('permission:guardian.create')->name('families.store');
     Route::match(['put', 'patch'], '/families/{guardian}', [FamilyController::class, 'update'])->middleware('permission:guardian.update')->name('families.update');
-    Route::delete('/families/{guardian}', [FamilyDeletionController::class, 'destroy'])->middleware('permission:guardian.delete')->name('families.destroy');
+    Route::delete('/families/{family}', [FamilyDeletionController::class, 'destroy'])->middleware('permission:guardian.delete')->name('families.destroy');
     Route::get('/families-trash', [FamilyController::class, 'trash'])->middleware('permission:guardian.view-trash')->name('families.trash');
     Route::delete('/families-trash/force-delete-all', [FamilyDeletionController::class, 'forceDeleteAll'])->middleware('permission:guardian.force-delete')->name('families.force-delete-all');
     Route::patch('/families-trash/{id}/restore', [FamilyController::class, 'restore'])->middleware('permission:guardian.restore')->name('families.restore');
